@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:path/path.dart' as path;
 
 
 class CreerAlerte extends StatefulWidget {
@@ -102,10 +103,13 @@ class _CreerAlerteState extends State<CreerAlerte> {
       }
 
       Future<String> uploadImage(File image) async {
-        // Upload l'image sur Firebase Storage
-        String fileName = 'alerts/${widget.uid}/${DateTime
-            .now()
-            .millisecondsSinceEpoch}';
+        String extension = path.extension(image.path);
+
+        if (extension.toLowerCase() != '.png' && extension.toLowerCase() != '.jpg') {
+          throw Exception('Only PNG and JPG files are allowed');
+        }
+
+        String fileName = 'alerts/${widget.uid}/${DateTime.now().millisecondsSinceEpoch}$extension';
         Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
         UploadTask uploadTask = storageRef.putFile(image);
         await uploadTask;
