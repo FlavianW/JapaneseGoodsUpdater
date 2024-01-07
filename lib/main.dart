@@ -17,9 +17,23 @@ void main() async {
   String? userId = prefs.getString('userId');
 
   if (isLoggedIn && userId != null) {
-    runApp(MaterialApp(home: Accueil(uid: userId)));
+    runApp(MaterialApp(
+      home: Accueil(uid: userId),
+      debugShowCheckedModeBanner: false,  // Ajouté ici
+    ));
   } else {
     runApp(MyApp());
   }
 }
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: LoginPage(),  // Assurez-vous que c'est le bon écran de démarrage
+      debugShowCheckedModeBanner: false,  // Ajouté ici
+    );
+  }
+}
+
 

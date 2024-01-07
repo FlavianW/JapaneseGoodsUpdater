@@ -76,7 +76,9 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return MaterialApp(
+        debugShowCheckedModeBanner: false,
+    home: Scaffold(
       appBar: AppBar(
         title: Text('Login'),
       ),
@@ -127,6 +129,7 @@ class _LoginPageState extends State<LoginPage> {
           ],
         ),
       ),
+    )
     );
   }
 }
