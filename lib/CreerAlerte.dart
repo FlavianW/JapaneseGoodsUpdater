@@ -19,6 +19,10 @@ class CreerAlerte extends StatefulWidget {
 }
 
 class _CreerAlerteState extends State<CreerAlerte> {
+
+  TextEditingController artistController = TextEditingController();
+  String? artistError; // Variable pour le message d'erreur
+
   String artist = '';
   int days = 1,
       hours = 0,
@@ -73,13 +77,56 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
 
     void addAlert() async {
+
+      Future<void> _showArtistExistsDialog() async {
+        return showDialog<void>(
+          context: context,
+          barrierDismissible: false, // L'utilisateur doit appuyer sur un bouton pour fermer la boîte de dialogue
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: const Text('Alerte Existe Déjà'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: const <Widget>[
+                    Text('Une alerte pour cet artiste existe déjà.'),
+                    Text('Veuillez essayer avec un nom d\'artiste différent.'),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('OK'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(); // Ferme la boîte de dialogue
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
+
+      final firestoreInstance = FirebaseFirestore.instance;
+      var existingAlerts = await firestoreInstance.collection('users')
+          .doc(widget.uid)
+          .collection('alerts')
+          .where('artist', isEqualTo: artistController.text)
+          .get();
+
+      if (existingAlerts.docs.isNotEmpty) {
+        // Affiche un popup si un artiste avec le même nom existe déjà
+        await _showArtistExistsDialog();
+        return;
+      }
+
       // Préparez les données de l'alerte
       final alertData = {
-        'artist': artist,
+        'artist': artistController.text,
         'days': days,
         'hours': hours,
         'minutes': minutes,
         'sendNotifications': sendNotifications,
+        'imageUrl': '',
         'sites': {
           'YahooJapanAuction': YahooJapanAuction,
           'YahooJapanShopping': YahooJapanShopping,
@@ -92,15 +139,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
         },
       };
 
-      void addAlertToFirestore(Map<String, dynamic> alertData) async {
-        final firestoreInstance = FirebaseFirestore.instance;
-        // Ajouter une nouvelle alerte dans une sous-collection pour cet utilisateur
-        await firestoreInstance.collection('users')
-            .doc(widget.uid)
-            .collection('alerts')
-            .add(
-            alertData); // Utilisez add() pour créer un nouveau document avec un ID unique
-      }
+
 
       Future<String> uploadImage(File image) async {
         String extension = path.extension(image.path);
@@ -116,6 +155,33 @@ class _CreerAlerteState extends State<CreerAlerte> {
         return await storageRef.getDownloadURL();
       }
 
+      if (_image != null) {
+        String imageUrl = await uploadImage(_image!);
+        alertData['imageUrl'] = imageUrl;
+      }
+
+      if (artistController.text.isEmpty) {
+        setState(() {
+          artistError = "Artist field cannot be empty"; // Définir le message d'erreur
+        });
+        return; // Ne pas continuer si le champ est vide
+      }
+
+      setState(() {
+        artistError = null;
+      });
+
+
+      void addAlertToFirestore(Map<String, dynamic> alertData) async {
+        final firestoreInstance = FirebaseFirestore.instance;
+        // Ajouter une nouvelle alerte dans une sous-collection pour cet utilisateur
+        await firestoreInstance.collection('users')
+            .doc(widget.uid)
+            .collection('alerts')
+            .add(
+            alertData); // Utilisez add() pour créer un nouveau document avec un ID unique
+      }
+
       void addAlertToSharedPreferences(Map<String, dynamic> alertData) async {
         final prefs = await SharedPreferences.getInstance();
         // Lire la liste existante d'alertes
@@ -126,20 +192,19 @@ class _CreerAlerteState extends State<CreerAlerte> {
         await prefs.setStringList('alerts', alerts);
       }
 
+
+
       addAlertToFirestore(alertData);
       addAlertToSharedPreferences(alertData);
 
-      String imageUrl = '';
-      if (_image != null) {
-        imageUrl = await uploadImage(_image!);
-      }
-
-      alertData['imageUrl'] = imageUrl;
 
       // Afficher un message ou effectuer une action après l'enregistrement
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Alert added")),
+        const SnackBar(content: Text("Alert added")),
       );
+
+      Navigator.pop(context);
+
     }
 
 
@@ -148,115 +213,123 @@ class _CreerAlerteState extends State<CreerAlerte> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-    home: Scaffold(
-      appBar: AppBar(
-        title: Text("Créer une Alerte"),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              decoration: InputDecoration(labelText: "Artist"),
-              onChanged: (value) {
-                artist = value;
-              },
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: TimeCard(
-                    label: "Jours",
-                    minValue: 1,
-                    maxValue: 7,
-                    onChanged: (val) => setState(() => days = val),
-                  ),
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text("Créer une Alerte"),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                controller: artistController,
+                decoration: InputDecoration(
+                  labelText: "Artist",
+                  errorText: artistError,
                 ),
-                Expanded(
-                  child: TimeCard(
-                    label: "Heures",
-                    minValue: 0,
-                    maxValue: 23,
-                    onChanged: (val) => setState(() => hours = val),
-                  ),
-                ),
-                Expanded(
-                  child: TimeCard(
-                    label: "Minutes",
-                    minValue: 0,
-                    maxValue: 59,
-                    onChanged: (val) => setState(() => minutes = val),
-                  ),
-                ),
-              ],
-            ),
-            CheckboxListTile(
-              title: Text("Send notifications even if there are no new items"),
-              value: sendNotifications,
-              onChanged: (bool? newValue) {
-                setState(() {
-                  sendNotifications = newValue ?? false;
-                });
-              },
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                "Sites to check",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                onChanged: (value) {
+                  if (artistError != null) {
+                    setState(() {
+                      artistError = null;
+                    });
+                  }
+                },
               ),
-            ),
-
-            // Ajout des CheckboxListTile pour chaque site
-            _buildCheckboxListTile("Yahoo! Japan Auction", YahooJapanAuction, (bool value) {
-              setState(() => YahooJapanAuction = value);
-            }),
-            _buildCheckboxListTile("Yahoo! Japan Shopping", YahooJapanShopping, (bool value) {
-              setState(() => YahooJapanShopping = value);
-            }),
-            _buildCheckboxListTile("Melonbooks", Melonbooks, (bool value) {
-              setState(() => Melonbooks = value);
-            }),
-            _buildCheckboxListTile("Rakuten", Rakuten, (bool value) {
-              setState(() => Rakuten = value);
-            }),
-            _buildCheckboxListTile("Booth", Booth, (bool value) {
-              setState(() => Booth = value);
-            }),
-            _buildCheckboxListTile("Surugaya", Surugaya, (bool value) {
-              setState(() => Surugaya = value);
-            }),
-            _buildCheckboxListTile("Toranoana", Toranoana, (bool value) {
-              setState(() => Toranoana = value);
-            }),
-            _buildCheckboxListTile("Mandarake", Mandarake, (bool value) {
-              setState(() => Mandarake = value);
-            }),
-            if (_image != null)
-              Container(
-                width: double.infinity,  // Prend la largeur maximale
-                height: MediaQuery.of(context).size.width * 10 / 16,  // 16:10 ratio
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    image: FileImage(_image!),  // Affiche l'image sélectionnée
+              Row(
+                children: [
+                  Expanded(
+                    child: TimeCard(
+                      label: "Jours",
+                      minValue: 1,
+                      maxValue: 7,
+                      onChanged: (val) => setState(() => days = val),
+                    ),
                   ),
+                  Expanded(
+                    child: TimeCard(
+                      label: "Heures",
+                      minValue: 0,
+                      maxValue: 23,
+                      onChanged: (val) => setState(() => hours = val),
+                    ),
+                  ),
+                  Expanded(
+                    child: TimeCard(
+                      label: "Minutes",
+                      minValue: 0,
+                      maxValue: 59,
+                      onChanged: (val) => setState(() => minutes = val),
+                    ),
+                  ),
+                ],
+              ),
+              CheckboxListTile(
+                title: Text("Send notifications even if there are no new items"),
+                value: sendNotifications,
+                onChanged: (bool? newValue) {
+                  setState(() {
+                    sendNotifications = newValue ?? false;
+                  });
+                },
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  "Sites to check",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-            ElevatedButton(
-              onPressed: pickImage,
-              child: Text(_image == null ? "Choose Image" : "Change Image"),
-            ),
-            ElevatedButton(
-              onPressed: addAlert,
-              child: Text('Add Alert'),
-            ),
-          ],
+              // Ajout des CheckboxListTile pour chaque site
+              _buildCheckboxListTile("Yahoo! Japan Auction", YahooJapanAuction, (bool value) {
+                setState(() => YahooJapanAuction = value);
+              }),
+              _buildCheckboxListTile("Yahoo! Japan Shopping", YahooJapanShopping, (bool value) {
+                setState(() => YahooJapanShopping = value);
+              }),
+              _buildCheckboxListTile("Melonbooks", Melonbooks, (bool value) {
+                setState(() => Melonbooks = value);
+              }),
+              _buildCheckboxListTile("Rakuten", Rakuten, (bool value) {
+                setState(() => Rakuten = value);
+              }),
+              _buildCheckboxListTile("Booth", Booth, (bool value) {
+                setState(() => Booth = value);
+              }),
+              _buildCheckboxListTile("Surugaya", Surugaya, (bool value) {
+                setState(() => Surugaya = value);
+              }),
+              _buildCheckboxListTile("Toranoana", Toranoana, (bool value) {
+                setState(() => Toranoana = value);
+              }),
+              _buildCheckboxListTile("Mandarake", Mandarake, (bool value) {
+                setState(() => Mandarake = value);
+              }),
+              if (_image != null)
+                Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.width * 10 / 16,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      fit: BoxFit.cover,
+                      image: FileImage(_image!),
+                    ),
+                  ),
+                ),
+              ElevatedButton(
+                onPressed: pickImage,
+                child: Text(_image == null ? "Choose Image" : "Change Image"),
+              ),
+              ElevatedButton(
+                onPressed: addAlert,
+                child: Text('Add Alert'),
+              ),
+            ],
+          ),
         ),
       ),
-    )
     );
   }
+
 
   Widget _buildCheckboxListTile(String title, bool currentValue, Function(bool) onChanged) {
     return CheckboxListTile(
