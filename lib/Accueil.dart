@@ -86,7 +86,6 @@ class _AccueilState extends State<Accueil> {
                 child: Text("Erreur de chargement des données"));
           } else if (snapshot.hasData) {
             String nickname = snapshot.data?['nickname'] ?? 'Utilisateur';
-            if (listeArtistes.isNotEmpty) {
               return Column(
                 children: [
                   SizedBox(height: 90),
@@ -132,11 +131,8 @@ class _AccueilState extends State<Accueil> {
                 ],
               );
             } else {
-              return const Center(child: Text("aaaaa")); //////// CODE ICI SI PAS D'ALERTES
+              return const Center(child: Text("Pas d'alertes")); //////// CODE ICI SI PAS D'ALERTES
             }
-          } else {
-            return const Center(child: Text("aaaaa"));
-          }
         },
       ),
       drawer: Drawer(
