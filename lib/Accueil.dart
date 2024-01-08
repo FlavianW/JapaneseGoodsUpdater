@@ -82,50 +82,60 @@ class _AccueilState extends State<Accueil> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return const Center(child: Text("Erreur de chargement des données"));
+            return const Center(
+                child: Text("Erreur de chargement des données"));
           } else if (snapshot.hasData) {
             String nickname = snapshot.data?['nickname'] ?? 'Utilisateur';
-            return Column(
-              children: [
-                SizedBox(height: 90), // Augmentez cet espace selon vos besoins
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Hello $nickname',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            if (listeArtistes.isNotEmpty) {
+              return Column(
+                children: [
+                  SizedBox(height: 90),
+                  // Augmentez cet espace selon vos besoins
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Hello $nickname',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
 
-                SizedBox(height: 160),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    '${listeArtistes.length} alerts',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  SizedBox(height: 160),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      '${listeArtistes.length} alerts',
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),// Augmentez cet espace selon vos besoins
-                Expanded(
-                  child: listeArtistes.isEmpty
-                      ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Create your first alert with the button'),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => CreerAlerte(uid: widget.uid)));
-                        },
-                        child: const Text('Create an alert'),
-                      ),
-                    ],
-                  )
-                      : ListeArtistesWidget(uid: widget.uid),
-                ),
-              ],
-            );
+                  // Augmentez cet espace selon vos besoins
+                  Expanded(
+                    child: listeArtistes.isEmpty
+                        ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Create your first alert with the button'),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) =>
+                                    CreerAlerte(uid: widget.uid)));
+                          },
+                          child: const Text('Create an alert'),
+                        ),
+                      ],
+                    )
+                        : ListeArtistesWidget(uid: widget.uid),
+                  ),
+                ],
+              );
+            } else {
+              return const Center(child: Text("aaaaa")); //////// CODE ICI SI PAS D'ALERTES
+            }
           } else {
-            return const Center(child: Text("No user data found"));
+            return const Center(child: Text("aaaaa"));
           }
         },
       ),
