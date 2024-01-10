@@ -229,7 +229,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       body: Stack(
         children: [
@@ -280,9 +279,10 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                             ),
                           ListTile(
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
-                            leading: CircleAvatar(child: Text(artiste.nom[0])),
-                            title: Text(artiste.nom),
+                                horizontal: 25, vertical: 10),
+                            title:
+                                Text(artiste.nom,
+                                style: const TextStyle(fontSize:20, fontWeight: FontWeight.bold)),
                             trailing: Switch(
                               value: artiste.alertesActivees,
                               onChanged: (bool value) {
