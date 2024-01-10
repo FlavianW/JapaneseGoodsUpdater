@@ -11,8 +11,10 @@ import 'package:path/path.dart' as path;
 
 class CreerAlerte extends StatefulWidget {
   final String uid;
+  final VoidCallback onAlertAdded;
 
-  CreerAlerte({Key? key, required this.uid}) : super(key: key);
+
+  CreerAlerte({Key? key, required this.uid, required this.onAlertAdded}) : super(key: key);
 
   @override
   _CreerAlerteState createState() => _CreerAlerteState();
@@ -197,13 +199,13 @@ class _CreerAlerteState extends State<CreerAlerte> {
       addAlertToFirestore(alertData);
       addAlertToSharedPreferences(alertData);
 
-
       // Afficher un message ou effectuer une action après l'enregistrement
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Alert added")),
       );
 
-      Navigator.pop(context);
+      widget.onAlertAdded(); // Appeler la méthode de rappel après l'ajout réussi
+      Navigator.pop(context); // Retourner à l'écran précédent
 
     }
 
@@ -216,6 +218,12 @@ class _CreerAlerteState extends State<CreerAlerte> {
       home: Scaffold(
         appBar: AppBar(
           title: Text("Créer une Alerte"),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context); // Revenir à l'écran précédent
+            },
+          ),
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),

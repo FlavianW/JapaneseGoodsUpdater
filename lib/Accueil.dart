@@ -31,10 +31,22 @@ class Accueil extends StatefulWidget {
 
   @override
   _AccueilState createState() => _AccueilState();
+
 }
 
 class _AccueilState extends State<Accueil> {
   List<Artiste> listeArtistes = [];
+
+  void reloadAlerts() async {
+    await loadAlerts();
+  }
+
+  void navigateToCreerAlerte() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) =>
+          CreerAlerte(uid: widget.uid, onAlertAdded: reloadAlerts),
+    ));
+  }
 
   @override
   void initState() {
@@ -87,7 +99,7 @@ class _AccueilState extends State<Accueil> {
             String nickname = snapshot.data?['nickname'] ?? 'Utilisateur';
             return Column(
               children: [
-                SizedBox(height: 90),
+                SizedBox(height: 60),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
@@ -111,8 +123,7 @@ class _AccueilState extends State<Accueil> {
                         const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => CreerAlerte(uid: widget.uid)));
+                            navigateToCreerAlerte();
                           },
                           child: const Text('Create an alert'),
                         ),
@@ -130,12 +141,14 @@ class _AccueilState extends State<Accueil> {
       ),
       drawer: Drawer(
         child: ListView(
-          padding: EdgeInsets.zero,
+          padding: EdgeInsets.zero, // Important pour s'assurer que le DrawerHeader n'a pas de padding supplémentaire
           children: <Widget>[
             const DrawerHeader(
               decoration: BoxDecoration(color: Colors.blue),
               child: Text(
-                  'Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+                  'Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24)
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.home),
@@ -151,9 +164,11 @@ class _AccueilState extends State<Accueil> {
                 // Naviguer vers la page des paramètres
               },
             ),
+            // ... Autres éléments du menu, si nécessaire
+            // Placez le ListTile de déconnexion en bas de la liste
             ListTile(
-              leading: const Icon(Icons.exit_to_app),
-              title: const Text('Déconnexion'),
+              leading: const Icon(Icons.exit_to_app, color: Colors.red),
+              title: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
               onTap: () => signOut(context),
             ),
           ],
@@ -175,6 +190,17 @@ class ListeArtistesWidget extends StatefulWidget {
 
 class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   List<Artiste> listeArtistes = [];
+
+  void navigateToCreerAlerte() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) =>
+          CreerAlerte(uid: widget.uid, onAlertAdded: reloadAlerts),
+    ));
+  }
+
+  void reloadAlerts() async {
+    await loadAlerts();
+  }
 
   @override
   void initState() {
@@ -203,58 +229,76 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       body: Stack(
         children: [
-          ListView.builder(
-            itemCount: listeArtistes.length,
-            itemBuilder: (context, index) {
-              Artiste artiste = listeArtistes[index];
-              bool hasImage = artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty;
+          Column(
+            children: [
+              SizedBox(height: 40),
+              Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Text(
+                  '${listeArtistes.length} ${listeArtistes.length == 1 ? "alert" : "alerts"}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: listeArtistes.length,
+                  itemBuilder: (context, index) {
+                    Artiste artiste = listeArtistes[index];
+                    bool hasImage = artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty;
 
-              return Card(
-                elevation: 4.0,
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                child: Stack(
-                  children: [
-                    SizedBox(height: 160),
-                    if (hasImage)
-                      Positioned.fill(
-                        child: ClipRect(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: NetworkImage(artiste.imageUrl!),
-                                fit: BoxFit.cover,
-                                colorFilter: ColorFilter.mode(
-                                    Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                    return Card(
+                      elevation: 4.0,
+                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: Stack(
+                        children: [
+                          SizedBox(height: 160),
+                          if (hasImage)
+                            Positioned.fill(
+                              child: ClipRect(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: NetworkImage(artiste.imageUrl!),
+                                      fit: BoxFit.cover,
+                                      colorFilter: ColorFilter.mode(
+                                          Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                                    ),
+                                  ),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                                    child: Container(color: Colors.black.withOpacity(0.0)),
+                                  ),
+                                ),
                               ),
                             ),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                              child: Container(color: Colors.black.withOpacity(0.0)),
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            leading: CircleAvatar(child: Text(artiste.nom[0])),
+                            title: Text(artiste.nom),
+                            trailing: Switch(
+                              value: artiste.alertesActivees,
+                              onChanged: (bool value) {
+                                setState(() {
+                                  artiste.alertesActivees = value;
+                                });
+                              },
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      leading: CircleAvatar(child: Text(artiste.nom[0])),
-                      title: Text(artiste.nom),
-                      trailing: Switch(
-                        value: artiste.alertesActivees,
-                        onChanged: (bool value) {
-                          setState(() {
-                            artiste.alertesActivees = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
+              ),
+            ],
           ),
           Positioned(
             bottom: 20.0,
@@ -263,7 +307,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
             child: Center(
               child: FloatingActionButton(
                 onPressed: () {
-                  // Action à effectuer quand le bouton est pressé
+                  navigateToCreerAlerte();
                 },
                 child: const Icon(Icons.add),
               ),
