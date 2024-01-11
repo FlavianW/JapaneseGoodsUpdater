@@ -20,8 +20,9 @@ class Artiste {
   String nom;
   bool alertesActivees;
   String? imageUrl;
+  bool isTaskActive;
 
-  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl});
+  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false});
 }
 
 class Accueil extends StatefulWidget {
@@ -219,6 +220,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
         nom: doc.data()['artist'] as String,
         alertesActivees: doc.data()['sendNotifications'] as bool,
         imageUrl: doc.data()['imageUrl'] as String?,
+        isTaskActive: checkIfTaskIsActive(doc.id), // Vous devez implémenter cette logique
       );
     }).toList();
 

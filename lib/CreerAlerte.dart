@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
-
+import 'package:flutter/services.dart';
 
 class CreerAlerte extends StatefulWidget {
   final String uid;
@@ -22,6 +22,7 @@ class CreerAlerte extends StatefulWidget {
 
 class _CreerAlerteState extends State<CreerAlerte> {
 
+  static const platform = MethodChannel('com.exemple.japanesegoodstool/workmanager');
   TextEditingController artistController = TextEditingController();
   String? artistError; // Variable pour le message d'erreur
 
@@ -108,6 +109,42 @@ class _CreerAlerteState extends State<CreerAlerte> {
         );
       }
 
+      void _showErrorDialog(String title, String content) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(title),
+              content: Text(content),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
+
+      Future<void> scheduleTask() async {
+        try {
+          final int result = await platform.invokeMethod('scheduleTask', {
+            'days': days,
+            'hours': hours,
+            'minutes': minutes,
+            'sendnotifications': sendNotifications,
+          });
+          print('Tâche planifiée avec succès : $result');
+        } on PlatformException catch (e) {
+          print("Erreur lors de la planification de la tâche: '${e.message}'.");
+          _showErrorDialog("Erreur de planification", "La tâche n'a pas pu être planifiée : ${e.message}");
+        }
+      }
+
+
       final firestoreInstance = FirebaseFirestore.instance;
       var existingAlerts = await firestoreInstance.collection('users')
           .doc(widget.uid)
@@ -128,6 +165,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'hours': hours,
         'minutes': minutes,
         'sendNotifications': sendNotifications,
+        'isTaskScheduled': false,
         'imageUrl': '',
         'sites': {
           'YahooJapanAuction': YahooJapanAuction,
@@ -195,7 +233,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       }
 
 
-
+      scheduleTask();
       addAlertToFirestore(alertData);
       addAlertToSharedPreferences(alertData);
 
