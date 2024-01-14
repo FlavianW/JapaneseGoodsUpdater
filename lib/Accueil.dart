@@ -24,22 +24,22 @@ class Artiste {
   bool alertesActivees;
   String? imageUrl;
   bool isTaskActive;
+  bool notifzero;
 
-  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false});
+  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false, this.notifzero = false});
 
   Map<String, dynamic> toJson() {
     return {
       'nom': nom,
-      'alertesActivees': alertesActivees,
+      'notifzero': alertesActivees,
       'imageUrl': imageUrl,
-      'isTaskActive': isTaskActive,
+      'isTaskActive': false,
     };
   }
 
   factory Artiste.fromJson(Map<String, dynamic> json) {
     return Artiste(
       nom: json['nom'],
-      alertesActivees: json['alertesActivees'],
       imageUrl: json['imageUrl'],
       isTaskActive: json['isTaskActive'],
     );
@@ -91,9 +91,11 @@ class _AccueilState extends State<Accueil> {
       );
     }).toList();
 
-    setState(() {
-      listeArtistes = loadedArtistes;
-    });
+    if (mounted) {
+      setState(() {
+        listeArtistes = loadedArtistes;
+      });
+    }
   }
 
   Future<void> signOut(BuildContext context) async {
@@ -213,10 +215,12 @@ class ListeArtistesWidget extends StatefulWidget {
 
 class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   List<Artiste> listeArtistes = [];
+  bool isLoading = true; // Ajout d'un indicateur de chargement
 
   Future<void> saveArtistsToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> artistesString = listeArtistes.map((artiste) => json.encode(artiste.toJson())).toList();
+    List<String> artistesString = listeArtistes.map((artiste) =>
+        json.encode(artiste.toJson())).toList();
     await prefs.setStringList('artistes', artistesString);
     print("SharedPreferences après la mise à jour: $artistesString");
   }
@@ -225,13 +229,17 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     final prefs = await SharedPreferences.getInstance();
     List<String>? artistesString = prefs.getStringList('artistes');
     if (artistesString != null) {
+      var tempArtistes = artistesString.map((str) =>
+          Artiste.fromJson(json.decode(str))).toList();
       setState(() {
-        listeArtistes = artistesString.map((str) => Artiste.fromJson(json.decode(str))).toList();
+        listeArtistes = tempArtistes;
+        isLoading = false;
       });
     }
     print('SharedPreferences: $artistesString');
     print(listeArtistes[0].alertesActivees);
   }
+
 
 
 
@@ -249,33 +257,52 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   @override
   void initState() {
     super.initState();
-    loadArtistsFromPrefs().then((_) => loadAlerts());
+    loadArtistsFromPrefs();
   }
 
 
 
   Future<void> loadAlerts() async {
-    var userAlerts = await FirebaseFirestore.instance.collection('users')
-        .doc(widget.uid)
-        .collection('alerts')
-        .get();
+    try {
+      var userAlerts = await FirebaseFirestore.instance.collection('users')
+          .doc(widget.uid)
+          .collection('alerts')
+          .get();
 
-    List<Artiste> loadedArtistes = userAlerts.docs.map((doc) {
-      return Artiste(
-        nom: doc.data()['artist'] as String,
-        alertesActivees: doc.data()['sendNotifications'] as bool,
-        imageUrl: doc.data()['imageUrl'] as String?,
-        //isTaskActive: checkIfTaskIsActive(doc.id), // Vous devez implémenter cette logique
-      );
-    }).toList();
+      List<Artiste> loadedArtistes = userAlerts.docs.map((doc) {
+        return Artiste(
+          nom: doc.data()['artist'] as String,
+          notifzero: doc.data()['sendNotifications'] as bool,
+          imageUrl: doc.data()['imageUrl'] as String?,
+          isTaskActive: false,
+          //isTaskActive: checkIfTaskIsActive(doc.id), // Vous devez implémenter cette logique
+        );
+      }).toList();
 
-    setState(() {
-      listeArtistes = loadedArtistes;
-    });
+      if (mounted) {
+        setState(() {
+          listeArtistes = loadedArtistes;
+          isLoading = false; // Mise à jour de l'indicateur de chargement
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false; // Mise à jour en cas d'erreur
+        });
+      }
+      // Gérer l'exception
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Afficher l'indicateur de chargement si les données sont toujours en cours de chargement
+    if (isLoading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       body: Stack(
         children: [
@@ -301,7 +328,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                     onChanged: (bool value) async {
                       // Mettre à jour l'artiste dans la liste
                       setState(() {
-                        artiste.alertesActivees = value;
+                        artiste.isTaskActive = value;
                         int index = listeArtistes.indexOf(artiste);
                         listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
                       });
@@ -342,11 +369,11 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                 Text(artiste.nom,
                                 style: const TextStyle(fontSize:20, fontWeight: FontWeight.bold)),
                             trailing: Switch(
-                              value: artiste.alertesActivees,
+                              value: artiste.isTaskActive,
                               onChanged: (bool value) async {
                                 // Mettre à jour l'artiste dans la liste
                                 setState(() {
-                                  artiste.alertesActivees = value;
+                                  artiste.isTaskActive = value;
                                   int index = listeArtistes.indexOf(artiste);
                                   listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
                                 });
