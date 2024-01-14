@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
+import 'package:html/parser.dart' as parser;
+import 'package:html/dom.dart' as dom;
+import 'dart:convert';
 
 Future<Map<String, dynamic>?> fetchUserData(String uid) async {
   try {
@@ -23,12 +26,31 @@ class Artiste {
   bool isTaskActive;
 
   Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'nom': nom,
+      'alertesActivees': alertesActivees,
+      'imageUrl': imageUrl,
+      'isTaskActive': isTaskActive,
+    };
+  }
+
+  factory Artiste.fromJson(Map<String, dynamic> json) {
+    return Artiste(
+      nom: json['nom'],
+      alertesActivees: json['alertesActivees'],
+      imageUrl: json['imageUrl'],
+      isTaskActive: json['isTaskActive'],
+    );
+  }
 }
+
 
 class Accueil extends StatefulWidget {
   final String uid;
 
-  Accueil({Key? key, required this.uid}) : super(key: key);
+  const Accueil({Key? key, required this.uid}) : super(key: key);
 
   @override
   _AccueilState createState() => _AccueilState();
@@ -80,7 +102,7 @@ class _AccueilState extends State<Accueil> {
     await prefs.setBool('isLoggedIn', false);
     await prefs.remove('userId');
     Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => LoginPage()));
+        MaterialPageRoute(builder: (context) => const LoginPage()));
   }
 
   @override
@@ -100,7 +122,7 @@ class _AccueilState extends State<Accueil> {
             String nickname = snapshot.data?['nickname'] ?? 'Utilisateur';
             return Column(
               children: [
-                SizedBox(height: 60),
+                const SizedBox(height: 60),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
@@ -183,7 +205,7 @@ class _AccueilState extends State<Accueil> {
 class ListeArtistesWidget extends StatefulWidget {
   final String uid;
 
-  ListeArtistesWidget({Key? key, required this.uid}) : super(key: key);
+  const ListeArtistesWidget({Key? key, required this.uid}) : super(key: key);
 
   @override
   _ListeArtistesWidgetState createState() => _ListeArtistesWidgetState();
@@ -191,6 +213,27 @@ class ListeArtistesWidget extends StatefulWidget {
 
 class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   List<Artiste> listeArtistes = [];
+
+  Future<void> saveArtistsToPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> artistesString = listeArtistes.map((artiste) => json.encode(artiste.toJson())).toList();
+    await prefs.setStringList('artistes', artistesString);
+    print("SharedPreferences après la mise à jour: $artistesString");
+  }
+
+  Future<void> loadArtistsFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? artistesString = prefs.getStringList('artistes');
+    if (artistesString != null) {
+      setState(() {
+        listeArtistes = artistesString.map((str) => Artiste.fromJson(json.decode(str))).toList();
+      });
+    }
+    print('SharedPreferences: $artistesString');
+    print(listeArtistes[0].alertesActivees);
+  }
+
+
 
   void navigateToCreerAlerte() {
     Navigator.of(context).push(MaterialPageRoute(
@@ -206,8 +249,10 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   @override
   void initState() {
     super.initState();
-    loadAlerts();
+    loadArtistsFromPrefs().then((_) => loadAlerts());
   }
+
+
 
   Future<void> loadAlerts() async {
     var userAlerts = await FirebaseFirestore.instance.collection('users')
@@ -220,7 +265,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
         nom: doc.data()['artist'] as String,
         alertesActivees: doc.data()['sendNotifications'] as bool,
         imageUrl: doc.data()['imageUrl'] as String?,
-        isTaskActive: checkIfTaskIsActive(doc.id), // Vous devez implémenter cette logique
+        //isTaskActive: checkIfTaskIsActive(doc.id), // Vous devez implémenter cette logique
       );
     }).toList();
 
@@ -236,12 +281,12 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
         children: [
           Column(
             children: [
-              SizedBox(height: 40),
+              const SizedBox(height: 40),
               Padding(
                 padding: const EdgeInsets.all(10.0),
                 child: Text(
                   '${listeArtistes.length} ${listeArtistes.length == 1 ? "alert" : "alerts"}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -253,13 +298,24 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                   itemBuilder: (context, index) {
                     Artiste artiste = listeArtistes[index];
                     bool hasImage = artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty;
+                    onChanged: (bool value) async {
+                      // Mettre à jour l'artiste dans la liste
+                      setState(() {
+                        artiste.alertesActivees = value;
+                        int index = listeArtistes.indexOf(artiste);
+                        listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
+                      });
+                      await saveArtistsToPrefs();
+                    };
+
+
 
                     return Card(
                       elevation: 4.0,
                       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       child: Stack(
                         children: [
-                          SizedBox(height: 160),
+                          const SizedBox(height: 160),
                           if (hasImage)
                             Positioned.fill(
                               child: ClipRect(
@@ -287,11 +343,16 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                 style: const TextStyle(fontSize:20, fontWeight: FontWeight.bold)),
                             trailing: Switch(
                               value: artiste.alertesActivees,
-                              onChanged: (bool value) {
+                              onChanged: (bool value) async {
+                                // Mettre à jour l'artiste dans la liste
                                 setState(() {
                                   artiste.alertesActivees = value;
+                                  int index = listeArtistes.indexOf(artiste);
+                                  listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
                                 });
+                                await saveArtistsToPrefs();
                               },
+
                             ),
                           ),
                         ],

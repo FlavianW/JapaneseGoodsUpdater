@@ -19,16 +19,18 @@ void main() async {
     if (user != null && user.uid == userId) {
       runApp(MaterialApp(home: Accueil(uid: userId)));
     } else {
-      runApp(MyApp());
+      runApp(const MyApp());
     }
   } else {
-    runApp(MyApp());
+    runApp(const MyApp());
   }
 }
 
 
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -36,12 +38,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: LoginPage(),
+      home: const LoginPage(),
     );
   }
 }
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -67,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => Accueil(uid: userCredential.user!.uid)),
       );
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Gestion des erreurs
     }
   }
@@ -80,22 +84,22 @@ class _LoginPageState extends State<LoginPage> {
         debugShowCheckedModeBanner: false,
     home: Scaffold(
       appBar: AppBar(
-        title: Text('Login'),
+        title: const Text('Login'),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             TextFormField(
               controller: emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'Email'),
               keyboardType: TextInputType.emailAddress,
             ),
             TextFormField(
               controller: passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
             Row(
@@ -110,21 +114,21 @@ class _LoginPageState extends State<LoginPage> {
                     });
                   },
                 ),
-                Text('Rester connecté'),
+                const Text('Rester connecté'),
               ],
             ),
             ElevatedButton(
               onPressed: signIn,
-              child: Text('Log In'),
+              child: const Text('Log In'),
             ),
 
             TextButton(
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
+                  MaterialPageRoute(builder: (context) => const RegisterPage()),
                 );
               },
-              child: Text('Créer un compte'),
+              child: const Text('Créer un compte'),
             ),
           ],
         ),

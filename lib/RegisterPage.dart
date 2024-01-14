@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:japanesegoodstool/Accueil.dart';
-import 'package:japanesegoodstool/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 
 class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
@@ -33,7 +32,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
         // Redirection ou gestion après inscription
       }
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Gestion des erreurs
     }
   }
@@ -43,31 +42,31 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Inscription'),
+        title: const Text('Inscription'),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             TextFormField(
               controller: emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'Email'),
               keyboardType: TextInputType.emailAddress,
             ),
             TextFormField(
               controller: passwordController,
-              decoration: InputDecoration(labelText: 'Mot de passe'),
+              decoration: const InputDecoration(labelText: 'Mot de passe'),
               obscureText: true,
             ),
             TextFormField(
               controller: nicknameController,
-              decoration: InputDecoration(labelText: 'Pseudonyme'),
+              decoration: const InputDecoration(labelText: 'Pseudonyme'),
             ),
             ElevatedButton(
               onPressed: register,
-              child: Text('S\'inscrire'),
+              child: const Text('S\'inscrire'),
             ),
           ],
         ),

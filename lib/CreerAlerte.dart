@@ -8,13 +8,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
+import 'package:html/parser.dart' as parser;
+import 'package:html/dom.dart' as dom;
 
 class CreerAlerte extends StatefulWidget {
   final String uid;
   final VoidCallback onAlertAdded;
 
 
-  CreerAlerte({Key? key, required this.uid, required this.onAlertAdded}) : super(key: key);
+  const CreerAlerte({Key? key, required this.uid, required this.onAlertAdded}) : super(key: key);
 
   @override
   _CreerAlerteState createState() => _CreerAlerteState();
@@ -81,16 +83,16 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
     void addAlert() async {
 
-      Future<void> _showArtistExistsDialog() async {
+      Future<void> showArtistExistsDialog() async {
         return showDialog<void>(
           context: context,
           barrierDismissible: false, // L'utilisateur doit appuyer sur un bouton pour fermer la boîte de dialogue
           builder: (BuildContext dialogContext) {
             return AlertDialog(
               title: const Text('Alerte Existe Déjà'),
-              content: SingleChildScrollView(
+              content: const SingleChildScrollView(
                 child: ListBody(
-                  children: const <Widget>[
+                  children: <Widget>[
                     Text('Une alerte pour cet artiste existe déjà.'),
                     Text('Veuillez essayer avec un nom d\'artiste différent.'),
                   ],
@@ -109,7 +111,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
         );
       }
 
-      void _showErrorDialog(String title, String content) {
+      void showErrorDialog(String title, String content) {
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -118,7 +120,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
               content: Text(content),
               actions: <Widget>[
                 TextButton(
-                  child: Text('OK'),
+                  child: const Text('OK'),
                   onPressed: () {
                     Navigator.of(context).pop(); // Ferme la boîte de dialogue
                   },
@@ -140,7 +142,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
           print('Tâche planifiée avec succès : $result');
         } on PlatformException catch (e) {
           print("Erreur lors de la planification de la tâche: '${e.message}'.");
-          _showErrorDialog("Erreur de planification", "La tâche n'a pas pu être planifiée : ${e.message}");
+          showErrorDialog("Erreur de planification", "La tâche n'a pas pu être planifiée : ${e.message}");
         }
       }
 
@@ -154,7 +156,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
       if (existingAlerts.docs.isNotEmpty) {
         // Affiche un popup si un artiste avec le même nom existe déjà
-        await _showArtistExistsDialog();
+        await showArtistExistsDialog();
         return;
       }
 
@@ -255,9 +257,9 @@ class _CreerAlerteState extends State<CreerAlerte> {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
-          title: Text("Créer une Alerte"),
+          title: const Text("Créer une Alerte"),
           leading: IconButton(
-            icon: Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back),
             onPressed: () {
               Navigator.pop(context); // Revenir à l'écran précédent
             },
@@ -310,7 +312,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                 ],
               ),
               CheckboxListTile(
-                title: Text("Send notifications even if there are no new items"),
+                title: const Text("Send notifications even if there are no new items"),
                 value: sendNotifications,
                 onChanged: (bool? newValue) {
                   setState(() {
@@ -367,7 +369,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
               ),
               ElevatedButton(
                 onPressed: addAlert,
-                child: Text('Add Alert'),
+                child: const Text('Add Alert'),
               ),
             ],
           ),
@@ -393,7 +395,7 @@ class TimeCard extends StatefulWidget {
   final int minValue, maxValue;
   final Function(int) onChanged;
 
-  TimeCard({required this.label, required this.minValue, required this.maxValue, required this.onChanged});
+  const TimeCard({super.key, required this.label, required this.minValue, required this.maxValue, required this.onChanged});
 
   @override
   _TimeCardState createState() => _TimeCardState();
