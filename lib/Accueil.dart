@@ -6,8 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
-import 'package:html/parser.dart' as parser;
-import 'package:html/dom.dart' as dom;
 import 'dart:convert';
 
 Future<Map<String, dynamic>?> fetchUserData(String uid) async {
@@ -33,9 +31,10 @@ class Artiste {
       'nom': nom,
       'notifzero': alertesActivees,
       'imageUrl': imageUrl,
-      'isTaskActive': false,
+      'isTaskActive': isTaskActive,
     };
   }
+
 
   factory Artiste.fromJson(Map<String, dynamic> json) {
     return Artiste(
@@ -235,10 +234,13 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
         listeArtistes = tempArtistes;
         isLoading = false;
       });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
     }
-    print('SharedPreferences: $artistesString');
-    print(listeArtistes[0].alertesActivees);
   }
+
 
 
 
@@ -282,6 +284,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       if (mounted) {
         setState(() {
           listeArtistes = loadedArtistes;
+          print(listeArtistes);
           isLoading = false; // Mise à jour de l'indicateur de chargement
         });
       }
@@ -335,8 +338,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                       await saveArtistsToPrefs();
                     };
 
-
-
                     return Card(
                       elevation: 4.0,
                       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -379,8 +380,8 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                 });
                                 await saveArtistsToPrefs();
                               },
-
                             ),
+
                           ),
                         ],
                       ),

@@ -8,8 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
-import 'package:html/parser.dart' as parser;
-import 'package:html/dom.dart' as dom;
 
 class CreerAlerte extends StatefulWidget {
   final String uid;
