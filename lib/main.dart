@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Accueil.dart';
+import 'TaskManager.dart';
 import 'login.dart';
 
 
@@ -13,7 +14,7 @@ void main() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
   String? userId = prefs.getString('userId');
-
+  await TaskManager.init();
   if (isLoggedIn && userId != null) {
     runApp(MaterialApp(
       home: Accueil(uid: userId),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'TaskManager.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
 import 'dart:convert';
@@ -23,8 +24,11 @@ class Artiste {
   String? imageUrl;
   bool isTaskActive;
   bool notifzero;
+  int days;
+  int hours;
+  int minutes;
 
-  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false, this.notifzero = false});
+  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false, this.notifzero = false, this.days = 0, this.hours = 0, this.minutes = 0});
 
   Map<String, dynamic> toJson() {
     return {
@@ -32,21 +36,28 @@ class Artiste {
       'notifzero': alertesActivees,
       'imageUrl': imageUrl,
       'isTaskActive': isTaskActive,
+      'days': days,
+      'hours': hours,
+      'minutes': minutes,
     };
   }
 
 
   factory Artiste.fromJson(Map<String, dynamic> json) {
     return Artiste(
-      nom: json['nom'],
-      imageUrl: json['imageUrl'],
-      isTaskActive: json['isTaskActive'],
+      nom: json['nom'] as String? ?? '',
+      imageUrl: json['imageUrl'] as String?,
+      isTaskActive: json['isTaskActive'] as bool? ?? false,
+      days: json['days'] as int? ?? 0,
+      hours: json['hours'] as int? ?? 0,
+      minutes: json['minutes'] as int? ?? 0,
     );
   }
 }
 
 
-class Accueil extends StatefulWidget {
+
+  class Accueil extends StatefulWidget {
   final String uid;
 
   const Accueil({Key? key, required this.uid}) : super(key: key);
@@ -73,7 +84,9 @@ class _AccueilState extends State<Accueil> {
   @override
   void initState() {
     super.initState();
+    print("InitState dans _AccueilState");
     loadAlerts();
+
   }
 
   Future<void> loadAlerts() async {
@@ -82,17 +95,37 @@ class _AccueilState extends State<Accueil> {
         .collection('alerts')
         .get();
 
+    print("Alertes récupérées depuis Firestore: ${userAlerts.docs.length}");
+
     var loadedArtistes = userAlerts.docs.map((doc) {
       return Artiste(
         nom: doc.data()['artist'] as String,
         alertesActivees: doc.data()['sendNotifications'] as bool,
         imageUrl: doc.data()['imageUrl'] as String?,
+        days: doc.data()['days'] as int,
+        hours: doc.data()['hours'] as int,
+        minutes: doc.data()['minutes'] as int,
       );
     }).toList();
+
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? artistesString = prefs.getStringList('artistes');
+    Map<String, bool> isTaskActiveMap = {};
+    if (artistesString != null) {
+      for (var str in artistesString) {
+        var artiste = Artiste.fromJson(json.decode(str));
+        isTaskActiveMap[artiste.nom] = artiste.isTaskActive;
+      }
+    }
+
+    for (var artiste in loadedArtistes) {
+      artiste.isTaskActive = isTaskActiveMap[artiste.nom] ?? false;
+    }
 
     if (mounted) {
       setState(() {
         listeArtistes = loadedArtistes;
+        print(loadedArtistes);
       });
     }
   }
@@ -137,13 +170,13 @@ class _AccueilState extends State<Accueil> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                      const Text(
-                      'Create your first alert with the button',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold, // Ajoutez cette ligne pour le gras
-                        fontSize: 16, // Ajustez la taille de la police si nécessaire
-                      ),
-                    ),
+                        const Text(
+                          'Create your first alert with the button',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, // Ajoutez cette ligne pour le gras
+                            fontSize: 16, // Ajustez la taille de la police si nécessaire
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () {
@@ -154,7 +187,7 @@ class _AccueilState extends State<Accueil> {
                       ],
                     ),
                   )
-                      : ListeArtistesWidget(uid: widget.uid), // Affiche la liste des artistes
+                      : ListeArtistesWidget(uid: widget.uid, listeArtistes: listeArtistes), // Affiche la liste des artistes
                 ),
               ],
             );
@@ -205,8 +238,8 @@ class _AccueilState extends State<Accueil> {
 
 class ListeArtistesWidget extends StatefulWidget {
   final String uid;
-
-  const ListeArtistesWidget({Key? key, required this.uid}) : super(key: key);
+  final List<Artiste> listeArtistes; // Ajoutez ce paramètre
+  const ListeArtistesWidget({Key? key, required this.uid, required this.listeArtistes}) : super(key: key);
 
   @override
   _ListeArtistesWidgetState createState() => _ListeArtistesWidgetState();
@@ -252,51 +285,104 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     ));
   }
 
-  void reloadAlerts() async {
-    await loadAlerts();
+  Future<void> reloadAlerts() async {
+    var userAlerts = await FirebaseFirestore.instance.collection('users')
+        .doc(widget.uid)
+        .collection('alerts')
+        .get();
+
+    List<Artiste> loadedArtistes = userAlerts.docs.map((doc) {
+      return Artiste(
+        nom: doc.data()['artist'] as String,
+        alertesActivees: doc.data()['sendNotifications'] as bool,
+        imageUrl: doc.data()['imageUrl'] as String?,
+        days: doc.data()['days'] as int,
+        hours: doc.data()['hours'] as int,
+        minutes: doc.data()['minutes'] as int,
+      );
+    }).toList();
+
+    // Chargement de l'état isTaskActive depuis SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? artistesString = prefs.getStringList('artistes');
+    Map<String, bool> isTaskActiveMap = {};
+    if (artistesString != null) {
+      for (var str in artistesString) {
+        var artiste = Artiste.fromJson(json.decode(str));
+        isTaskActiveMap[artiste.nom] = artiste.isTaskActive;
+      }
+    }
+
+    // Appliquer l'état isTaskActive aux artistes chargés depuis Firestore
+    for (var artiste in loadedArtistes) {
+      var nomArtiste = artiste.nom;
+      if (isTaskActiveMap.containsKey(nomArtiste)) {
+        artiste.isTaskActive = isTaskActiveMap[nomArtiste]!;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        listeArtistes = loadedArtistes;
+      });
+    }
   }
+
+
 
   @override
   void initState() {
     super.initState();
-    loadArtistsFromPrefs();
+    reloadAlerts(); // Chargez les artistes et mettez à jour leur état
+    isLoading = false;
   }
 
 
 
   Future<void> loadAlerts() async {
-    try {
-      var userAlerts = await FirebaseFirestore.instance.collection('users')
-          .doc(widget.uid)
-          .collection('alerts')
-          .get();
+    var userAlerts = await FirebaseFirestore.instance.collection('users')
+        .doc(widget.uid)
+        .collection('alerts')
+        .get();
 
-      List<Artiste> loadedArtistes = userAlerts.docs.map((doc) {
-        return Artiste(
-          nom: doc.data()['artist'] as String,
-          notifzero: doc.data()['sendNotifications'] as bool,
-          imageUrl: doc.data()['imageUrl'] as String?,
-          isTaskActive: false,
-          //isTaskActive: checkIfTaskIsActive(doc.id), // Vous devez implémenter cette logique
-        );
-      }).toList();
+    var loadedArtistes = userAlerts.docs.map((doc) {
+      return Artiste(
+        nom: doc.data()['artist'] as String,
+        alertesActivees: doc.data()['sendNotifications'] as bool,
+        imageUrl: doc.data()['imageUrl'] as String?,
+        days: doc.data()['days'] as int,
+        hours: doc.data()['hours'] as int,
+        minutes: doc.data()['minutes'] as int,
+      );
+    }).toList();
 
-      if (mounted) {
-        setState(() {
-          listeArtistes = loadedArtistes;
-          print(listeArtistes);
-          isLoading = false; // Mise à jour de l'indicateur de chargement
-        });
+    // Chargement de l'état isTaskActive depuis SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? artistesString = prefs.getStringList('artistes');
+    Map<String, bool> isTaskActiveMap = {};
+    if (artistesString != null) {
+      for (var str in artistesString) {
+        var artiste = Artiste.fromJson(json.decode(str));
+        isTaskActiveMap[artiste.nom] = artiste.isTaskActive;
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          isLoading = false; // Mise à jour en cas d'erreur
-        });
+    }
+
+    // Appliquer l'état isTaskActive aux artistes chargés depuis Firestore
+    for (var artiste in loadedArtistes) {
+      var nomArtiste = artiste.nom;
+      if (isTaskActiveMap.containsKey(nomArtiste)) {
+        artiste.isTaskActive = isTaskActiveMap[nomArtiste]!;
       }
-      // Gérer l'exception
+    }
+
+    if (mounted) {
+      setState(() {
+        listeArtistes = loadedArtistes;
+      });
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +453,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 25, vertical: 10),
                             title:
-                                Text(artiste.nom,
+                            Text(artiste.nom,
                                 style: const TextStyle(fontSize:20, fontWeight: FontWeight.bold)),
                             trailing: Switch(
                               value: artiste.isTaskActive,
@@ -379,6 +465,16 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                   listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
                                 });
                                 await saveArtistsToPrefs();
+                                String taskName = "task_${artiste.nom}";
+                                if (value) {
+                                  // Planifiez la tâche ici
+                                  TaskManager.setTaskScheduled(taskName, true, artiste.days, artiste.hours, artiste.minutes);
+                                  // Ajoutez la logique pour démarrer la tâche
+                                } else {
+                                  // Annulez la tâche ici
+                                  TaskManager.clearTaskScheduled(taskName);
+                                  // Ajoutez la logique pour arrêter la tâche si nécessaire
+                                }
                               },
                             ),
 
@@ -409,4 +505,3 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     );
   }
 }
-

@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
+import 'package:workmanager/workmanager.dart';
+
+import 'Accueil.dart';
 
 class CreerAlerte extends StatefulWidget {
   final String uid;
@@ -129,20 +132,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
         );
       }
 
-      Future<void> scheduleTask() async {
-        try {
-          final int result = await platform.invokeMethod('scheduleTask', {
-            'days': days,
-            'hours': hours,
-            'minutes': minutes,
-            'sendnotifications': sendNotifications,
-          });
-          print('Tâche planifiée avec succès : $result');
-        } on PlatformException catch (e) {
-          print("Erreur lors de la planification de la tâche: '${e.message}'.");
-          showErrorDialog("Erreur de planification", "La tâche n'a pas pu être planifiée : ${e.message}");
-        }
-      }
 
 
       final firestoreInstance = FirebaseFirestore.instance;
@@ -224,16 +213,31 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
       void addAlertToSharedPreferences(Map<String, dynamic> alertData) async {
         final prefs = await SharedPreferences.getInstance();
-        // Lire la liste existante d'alertes
-        final List<String> alerts = prefs.getStringList('alerts') ?? [];
-        // Ajouter la nouvelle alerte
-        alerts.add(json.encode(alertData));
-        // Sauvegarder la liste mise à jour
-        await prefs.setStringList('alerts', alerts);
+
+        // Chargez la liste actuelle des artistes des SharedPreferences
+        List<String>? artistesString = prefs.getStringList('artistes');
+        List<Artiste> artistes = artistesString?.map((str) => Artiste.fromJson(json.decode(str))).toList() ?? [];
+
+        // Créer un nouvel objet Artiste pour la nouvelle alerte
+        Artiste newArtiste = Artiste(
+          nom: alertData['artist'],
+          alertesActivees: alertData['sendNotifications'],
+          imageUrl: alertData['imageUrl'],
+          days: alertData['days'],
+          hours: alertData['hours'],
+          minutes: alertData['minutes'],
+          isTaskActive: false, // L'état initial par défaut pour la nouvelle alerte
+        );
+
+        // Ajouter la nouvelle alerte à la liste
+        artistes.add(newArtiste);
+
+        // Sauvegarder la liste mise à jour dans SharedPreferences
+        artistesString = artistes.map((artiste) => json.encode(artiste.toJson())).toList();
+        await prefs.setStringList('artistes', artistesString);
       }
 
 
-      scheduleTask();
       addAlertToFirestore(alertData);
       addAlertToSharedPreferences(alertData);
 
