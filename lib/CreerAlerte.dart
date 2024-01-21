@@ -83,7 +83,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
 
     void addAlert() async {
-
       Future<void> showArtistExistsDialog() async {
         return showDialog<void>(
           context: context,

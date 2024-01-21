@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:japanesegoodstool/EditAlerte.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -60,7 +61,7 @@ class Artiste {
 
 
 
-  class Accueil extends StatefulWidget {
+class Accueil extends StatefulWidget {
   final String uid;
 
   const Accueil({Key? key, required this.uid}) : super(key: key);
@@ -525,9 +526,9 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
             .doc(querySnapshot.docs.first.id)
             .delete();
       }
-      } catch (e) {
-        print("Erreur lors de la suppression de l'artiste: $e");
-      }
+    } catch (e) {
+      print("Erreur lors de la suppression de l'artiste: $e");
+    }
 
     // Supprimer l'image de Google Storage, si elle existe
     if (artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty) {
@@ -546,21 +547,31 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(
-              "Do you want to edit or delete the alert for ${artiste.nom}?"),
+          title: Text("Do you want to edit or delete the alert for ${artiste.nom}?"),
           actions: <Widget>[
             TextButton(
               child: Text("Edit"),
               onPressed: () {
-                // Logique pour l'édition
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Fermez d'abord la boîte de dialogue
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => EditAlerte(
+                      uid: widget.uid,
+                      alerteId: artiste.nom,
+                      onAlertAdded: () {
+                        // Vous pourriez vouloir recharger les alertes après avoir édité
+                        reloadAlerts();
+                      },
+                    ),
+                  ),
+                );
               },
             ),
             TextButton(
               child: Text("Delete"),
               onPressed: () async {
                 await onDeletePressed(artiste, index);
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Fermez la boîte de dialogue
               },
             ),
           ],
