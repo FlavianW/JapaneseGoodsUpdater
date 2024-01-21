@@ -1,9 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:workmanager/workmanager.dart';
 
 class TaskManager {
   static SharedPreferences? _prefs;
+
+  /// Annule toutes les tâches planifiées.
+  static Future<void> cancelAllTasks() async {
+    await Workmanager().cancelAll();
+    print("Toutes les tâches annulées");
+  }
 
 
   /// Initialise les SharedPreferences.
