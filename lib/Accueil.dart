@@ -131,13 +131,21 @@ class _AccueilState extends State<Accueil> {
   }
 
   Future<void> signOut(BuildContext context) async {
+    // Se déconnecter de FirebaseAuth
     await FirebaseAuth.instance.signOut();
+
+    await TaskManager.cancelAllTasks();
+    // Obtenir l'instance de SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
-    await prefs.remove('userId');
+
+    // Effacer toutes les données dans SharedPreferences
+    await prefs.clear();
+
+    // Naviguer vers la page de connexion
     Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const LoginPage()));
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -386,7 +394,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Afficher l'indicateur de chargement si les données sont toujours en cours de chargement
     if (isLoading) {
       return Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -401,7 +408,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
               Padding(
                 padding: const EdgeInsets.all(10.0),
                 child: Text(
-                  '${listeArtistes.length} ${listeArtistes.length == 1 ? "alert" : "alerts"}',
+                  '${listeArtistes.length} ${listeArtistes.length == 1 ? "alerte" : "alertes"}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -414,72 +421,56 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                   itemBuilder: (context, index) {
                     Artiste artiste = listeArtistes[index];
                     bool hasImage = artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty;
-                    onChanged: (bool value) async {
-                      // Mettre à jour l'artiste dans la liste
-                      setState(() {
-                        artiste.isTaskActive = value;
-                        int index = listeArtistes.indexOf(artiste);
-                        listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
-                      });
-                      await saveArtistsToPrefs();
-                    };
 
-                    return Card(
-                      elevation: 4.0,
-                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      child: Stack(
-                        children: [
-                          const SizedBox(height: 160),
-                          if (hasImage)
-                            Positioned.fill(
-                              child: ClipRect(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                      image: NetworkImage(artiste.imageUrl!),
-                                      fit: BoxFit.cover,
-                                      colorFilter: ColorFilter.mode(
-                                          Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                    return GestureDetector(
+                      onLongPress: () => showEditDeleteDialog(context, artiste, index),
+                      child: Card(
+                        elevation: 4.0,
+                        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Stack(
+                          children: [
+                            const SizedBox(height: 160),
+                            if (hasImage)
+                              Positioned.fill(
+                                child: ClipRect(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      image: DecorationImage(
+                                        image: NetworkImage(artiste.imageUrl!),
+                                        fit: BoxFit.cover,
+                                        colorFilter: ColorFilter.mode(
+                                            Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                                      ),
                                     ),
-                                  ),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                                    child: Container(color: Colors.black.withOpacity(0.0)),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                                      child: Container(color: Colors.black.withOpacity(0.0)),
+                                    ),
                                   ),
                                 ),
                               ),
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                              title: Text(artiste.nom, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              trailing: Switch(
+                                value: artiste.isTaskActive,
+                                onChanged: (bool value) async {
+                                  setState(() {
+                                    artiste.isTaskActive = value;
+                                    listeArtistes[index] = artiste;
+                                  });
+                                  await saveArtistsToPrefs();
+                                  String taskName = "task_${artiste.nom}";
+                                  if (value) {
+                                    TaskManager.setTaskScheduled(taskName, true, artiste.days, artiste.hours, artiste.minutes);
+                                  } else {
+                                    TaskManager.clearTaskScheduled(taskName);
+                                  }
+                                },
+                              ),
                             ),
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 25, vertical: 10),
-                            title:
-                            Text(artiste.nom,
-                                style: const TextStyle(fontSize:20, fontWeight: FontWeight.bold)),
-                            trailing: Switch(
-                              value: artiste.isTaskActive,
-                              onChanged: (bool value) async {
-                                // Mettre à jour l'artiste dans la liste
-                                setState(() {
-                                  artiste.isTaskActive = value;
-                                  int index = listeArtistes.indexOf(artiste);
-                                  listeArtistes[index] = artiste; // Mise à jour de l'artiste dans la liste
-                                });
-                                await saveArtistsToPrefs();
-                                String taskName = "task_${artiste.nom}";
-                                if (value) {
-                                  // Planifiez la tâche ici
-                                  TaskManager.setTaskScheduled(taskName, true, artiste.days, artiste.hours, artiste.minutes);
-                                  // Ajoutez la logique pour démarrer la tâche
-                                } else {
-                                  // Annulez la tâche ici
-                                  TaskManager.clearTaskScheduled(taskName);
-                                  // Ajoutez la logique pour arrêter la tâche si nécessaire
-                                }
-                              },
-                            ),
-
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -493,15 +484,43 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
             right: 0.0,
             child: Center(
               child: FloatingActionButton(
-                onPressed: () {
-                  navigateToCreerAlerte();
-                },
+                onPressed: navigateToCreerAlerte,
                 child: const Icon(Icons.add),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void showEditDeleteDialog(BuildContext context, Artiste artiste, int index) {
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Permet de fermer la boîte de dialogue en cliquant en dehors
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Edit or delete ${artiste.nom} alert?"),
+          actions: <Widget>[
+            TextButton(
+              child: Text("Edit"),
+              onPressed: () {
+                // Logique pour l'édition
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+              },
+            ),
+            TextButton(
+              child: Text("Delete"),
+              onPressed: () {
+                setState(() {
+                  listeArtistes.removeAt(index);
+                });
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
