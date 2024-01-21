@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'TaskManager.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
 import 'dart:convert';
+
+
 
 Future<Map<String, dynamic>?> fetchUserData(String uid) async {
   try {
@@ -283,9 +286,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   }
 
 
-
-
-
   void navigateToCreerAlerte() {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (context) =>
@@ -337,14 +337,12 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   }
 
 
-
   @override
   void initState() {
     super.initState();
     reloadAlerts(); // Chargez les artistes et mettez à jour leur état
     isLoading = false;
   }
-
 
 
   Future<void> loadAlerts() async {
@@ -391,7 +389,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   }
 
 
-
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -408,7 +405,9 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
               Padding(
                 padding: const EdgeInsets.all(10.0),
                 child: Text(
-                  '${listeArtistes.length} ${listeArtistes.length == 1 ? "alerte" : "alertes"}',
+                  '${listeArtistes.length} ${listeArtistes.length == 1
+                      ? "alert"
+                      : "alerts"}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -420,13 +419,16 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                   itemCount: listeArtistes.length,
                   itemBuilder: (context, index) {
                     Artiste artiste = listeArtistes[index];
-                    bool hasImage = artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty;
+                    bool hasImage = artiste.imageUrl != null &&
+                        artiste.imageUrl!.isNotEmpty;
 
                     return GestureDetector(
-                      onLongPress: () => showEditDeleteDialog(context, artiste, index),
+                      onLongPress: () =>
+                          showEditDeleteDialog(context, artiste, index),
                       child: Card(
                         elevation: 4.0,
-                        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         child: Stack(
                           children: [
                             const SizedBox(height: 160),
@@ -439,19 +441,24 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                         image: NetworkImage(artiste.imageUrl!),
                                         fit: BoxFit.cover,
                                         colorFilter: ColorFilter.mode(
-                                            Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                                            Colors.black.withOpacity(0.5),
+                                            BlendMode.dstATop),
                                       ),
                                     ),
                                     child: BackdropFilter(
-                                      filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                                      child: Container(color: Colors.black.withOpacity(0.0)),
+                                      filter: ImageFilter.blur(
+                                          sigmaX: 2, sigmaY: 2),
+                                      child: Container(
+                                          color: Colors.black.withOpacity(0.0)),
                                     ),
                                   ),
                                 ),
                               ),
                             ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-                              title: Text(artiste.nom, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 25, vertical: 10),
+                              title: Text(artiste.nom, style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
                               trailing: Switch(
                                 value: artiste.isTaskActive,
                                 onChanged: (bool value) async {
@@ -462,7 +469,9 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                   await saveArtistsToPrefs();
                                   String taskName = "task_${artiste.nom}";
                                   if (value) {
-                                    TaskManager.setTaskScheduled(taskName, true, artiste.days, artiste.hours, artiste.minutes);
+                                    TaskManager.setTaskScheduled(
+                                        taskName, true, artiste.days,
+                                        artiste.hours, artiste.minutes);
                                   } else {
                                     TaskManager.clearTaskScheduled(taskName);
                                   }
@@ -494,28 +503,64 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     );
   }
 
+
+  Future<void> onDeletePressed(Artiste artiste, int index) async {
+    TaskManager.clearTaskScheduled("task_${artiste.nom}");
+    try {
+      // Requête pour trouver le document basé sur le nom de l'artiste
+      var querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .collection('alerts')
+          .where('artist', isEqualTo: artiste.nom) // Utilisez le champ exact utilisé pour stocker le nom de l'artiste
+          .limit(1) // S'il y a plusieurs documents avec le même nom, cela limitera à un seul résultat
+          .get();
+
+      // Si le document existe, supprimez-le
+      if (querySnapshot.docs.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.uid)
+            .collection('alerts')
+            .doc(querySnapshot.docs.first.id)
+            .delete();
+      }
+      } catch (e) {
+        print("Erreur lors de la suppression de l'artiste: $e");
+      }
+
+    // Supprimer l'image de Google Storage, si elle existe
+    if (artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty) {
+      FirebaseStorage.instance.refFromURL(artiste.imageUrl!).delete();
+    }
+    setState(() {
+      listeArtistes.removeAt(index);
+    });
+    await saveArtistsToPrefs(); // Votre méthode existante pour sauvegarder dans SharedPreferences
+  }
+
+
   void showEditDeleteDialog(BuildContext context, Artiste artiste, int index) {
     showDialog(
       context: context,
-      barrierDismissible: true, // Permet de fermer la boîte de dialogue en cliquant en dehors
+      barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Edit or delete ${artiste.nom} alert?"),
+          title: Text(
+              "Do you want to edit or delete the alert for ${artiste.nom}?"),
           actions: <Widget>[
             TextButton(
               child: Text("Edit"),
               onPressed: () {
                 // Logique pour l'édition
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context).pop();
               },
             ),
             TextButton(
               child: Text("Delete"),
-              onPressed: () {
-                setState(() {
-                  listeArtistes.removeAt(index);
-                });
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+              onPressed: () async {
+                await onDeletePressed(artiste, index);
+                Navigator.of(context).pop();
               },
             ),
           ],
