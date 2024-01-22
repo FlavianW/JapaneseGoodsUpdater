@@ -86,7 +86,7 @@ class _EditAlerteState extends State<EditAlerte> {
           imageBase = alertData['imageUrl'] ?? '';
 
           // Vérifiez si vous avez une imageUrl dans les données de l'alerte
-          if (alertData['imageUrl'] != null) {
+          if (alertData['imageUrl'] != '') {
             imageUrlWidget = Image.network(alertData['imageUrl']);
           }
         });
@@ -140,7 +140,7 @@ class _EditAlerteState extends State<EditAlerte> {
         }
       }
 
-      if (_image != null) {
+      if (_image != null && imageBase != '') {
         // Uploadez l'image et obtenez l'URL
         String imageUrl = await uploadImage(_image!);
         updateData['imageUrl'] = imageUrl;
@@ -214,12 +214,11 @@ class _EditAlerteState extends State<EditAlerte> {
         ],
       );
 
-      if (croppedFile != null) {
+      if (croppedFile != null) {  // Corrected line
         print("Selected image path: ${croppedFile.path}");
         setState(() {
           _image = File(croppedFile.path);
-          imageUrlWidget =
-              null; // Réinitialisez imageUrlWidget pour supprimer l'image précédente
+          imageUrlWidget = null; // Reset imageUrlWidget to remove the previous image
         });
       }
     }
