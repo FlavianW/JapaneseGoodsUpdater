@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'TaskManager.dart';
+import 'package:workmanager/workmanager.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
 import 'dart:convert';
@@ -21,6 +22,7 @@ Future<Map<String, dynamic>?> fetchUserData(String uid) async {
     return null;
   }
 }
+
 
 class Artiste {
   String nom;
@@ -130,6 +132,7 @@ class _AccueilState extends State<Accueil> {
       setState(() {
         listeArtistes = loadedArtistes;
         print(loadedArtistes);
+
       });
     }
   }
@@ -472,9 +475,9 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                   if (value) {
                                     TaskManager.setTaskScheduled(
                                         taskName, true, artiste.days,
-                                        artiste.hours, artiste.minutes);
+                                        artiste.hours, artiste.minutes, widget.uid, artiste.nom);
                                   } else {
-                                    TaskManager.clearTaskScheduled(taskName);
+                                    TaskManager.cancelTask(taskName);
                                   }
                                 },
                               ),
@@ -506,7 +509,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
 
 
   Future<void> onDeletePressed(Artiste artiste, int index) async {
-    TaskManager.clearTaskScheduled("task_${artiste.nom}");
+    TaskManager.cancelTask("task_${artiste.nom}");
     try {
       // Requête pour trouver le document basé sur le nom de l'artiste
       var querySnapshot = await FirebaseFirestore.instance

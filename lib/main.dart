@@ -1,14 +1,17 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:workmanager/workmanager.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'Accueil.dart';
+import 'SiteChecker.dart';
 import 'TaskManager.dart';
 import 'login.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  NotificationService.initialize();
   await Firebase.initializeApp();
 
   SharedPreferences prefs = await SharedPreferences.getInstance();

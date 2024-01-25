@@ -96,7 +96,41 @@ class _EditAlerteState extends State<EditAlerte> {
     }
   }
 
+  bool isDurationValid(int days, int hours, int minutes) {
+    // Convertissez tout en minutes et vérifiez si le total est >= 5 minutes
+    int totalMinutes = days * 24 * 60 + hours * 60 + minutes;
+    return totalMinutes >= 15;
+  }
+
+  void showErrorDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   void updateAlert() async {
+    if (!isDurationValid(days, hours, minutes)) {
+      showErrorDialog(
+          "Durée Invalide",
+          "La durée doit être d'au moins 5 minutes."
+      );
+      return;
+    }
     try {
       Map<String, dynamic> updateData = {
         'artist': artistController.text,

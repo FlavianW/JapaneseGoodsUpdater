@@ -9,8 +9,9 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 import 'package:workmanager/workmanager.dart';
-
 import 'Accueil.dart';
+
+
 
 class CreerAlerte extends StatefulWidget {
   final String uid;
@@ -80,9 +81,39 @@ class _CreerAlerteState extends State<CreerAlerte> {
     }
   }
 
-
+  bool isDurationValid(int days, int hours, int minutes) {
+    // Convertissez tout en minutes et vérifiez si le total est >= 5 minutes
+    int totalMinutes = days * 24 * 60 + hours * 60 + minutes;
+    return totalMinutes >= 15;
+  }
+  void showErrorDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
     void addAlert() async {
+      if (!isDurationValid(days, hours, minutes)) {
+        showErrorDialog(
+            "Durée Invalide",
+            "La durée doit être d'au moins 5 minutes."
+        );
+        return;
+      }
       Future<void> showArtistExistsDialog() async {
         return showDialog<void>(
           context: context,
@@ -103,26 +134,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
                   child: const Text('OK'),
                   onPressed: () {
                     Navigator.of(dialogContext).pop(); // Ferme la boîte de dialogue
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      }
-
-      void showErrorDialog(String title, String content) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text(title),
-              content: Text(content),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Ferme la boîte de dialogue
                   },
                 ),
               ],
@@ -153,7 +164,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'hours': hours,
         'minutes': minutes,
         'sendNotifications': sendNotifications,
-        'isTaskScheduled': false,
         'imageUrl': '',
         'sites': {
           'YahooJapanAuction': YahooJapanAuction,
@@ -288,15 +298,15 @@ class _CreerAlerteState extends State<CreerAlerte> {
                 children: [
                   Expanded(
                     child: TimeCard(
-                      label: "Jours",
-                      minValue: 1,
+                      label: "Days",
+                      minValue: 0,
                       maxValue: 7,
                       onChanged: (val) => setState(() => days = val),
                     ),
                   ),
                   Expanded(
                     child: TimeCard(
-                      label: "Heures",
+                      label: "Hours",
                       minValue: 0,
                       maxValue: 23,
                       onChanged: (val) => setState(() => hours = val),
