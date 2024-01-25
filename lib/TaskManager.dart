@@ -79,7 +79,6 @@ void callbackDispatcher() {
     final String artistName = inputData?['artistName'];
 
 
-
     await NotificationService.showNotification(
         0, // ID de la notification
         "Alerte pour $artistName",

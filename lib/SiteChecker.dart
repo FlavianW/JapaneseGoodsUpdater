@@ -38,3 +38,30 @@ class NotificationService {
   }
 }
 
+Future<int> extractResults(String htmlContent) async {
+  try {
+    // Parse le contenu HTML
+    dom.Document document = parser.parse(htmlContent);
+
+    // Recherche la balise spécifique avec le sélecteur CSS
+    dom.Element? specificTag = document.querySelector(".u-d-flex.u-align-items-center.u-pb-300.u-tpg-body2.u-justify-content-between > b");
+
+    if (specificTag != null) {
+      // Extraire le nombre de la chaîne de texte
+      RegExp regExp = RegExp(r'\d+'); // Regex pour trouver des chiffres
+      Iterable<RegExpMatch> matches = regExp.allMatches(specificTag.text);
+
+      if (matches.isNotEmpty) {
+        // Convertit le premier match trouvé en nombre
+        return int.parse(matches.first.group(0) ?? '0');
+      } else {
+        return 0; // Retourne 0 si aucun nombre n'est trouvé
+      }
+    } else {
+      return 0; // Retourne 0 si le tag n'est pas trouvé
+    }
+  } catch (e) {
+    print('Error parsing HTML: $e');
+    return 0; // Retourne 0 en cas d'erreur
+  }
+}
