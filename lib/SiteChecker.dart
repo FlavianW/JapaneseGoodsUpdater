@@ -84,45 +84,77 @@ Future<int> extractResultsBooth(String artistName) async {
 
 Future<int> extractResultsMandarake(String artistName) async {
   try {
-    // Encode le nom de l'artiste pour l'URL
     String encodedArtistName = Uri.encodeComponent(artistName);
     String url = 'https://order.mandarake.co.jp/order/listPage/list?soldOut=1&keyword=$encodedArtistName&lang=en';
 
-    // Envoie la requête HTTP
     var response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       String htmlContent = response.body;
 
-      // Parse le contenu HTML
       dom.Document document = parser.parse(htmlContent);
 
-      // Utilise le sélecteur CSS pour trouver le nombre de résultats
       dom.Element? resultCountElement = document.querySelector('div.count');
 
       if (resultCountElement != null) {
-        // Le texte devrait être quelque chose comme "Search result: X items"
         String resultText = resultCountElement.text;
 
-        // Utilise RegExp pour extraire le nombre
         RegExp regExp = RegExp(r'\d+');
         Iterable<RegExpMatch> matches = regExp.allMatches(resultText);
 
         if (matches.isNotEmpty) {
-          // Convertit le premier match trouvé en nombre
           return int.parse(matches.first.group(0) ?? '0');
         } else {
-          return 0; // Retourne 0 si aucun nombre n'est trouvé
+          return 0;
         }
       } else {
-        return 0; // Retourne 0 si l'élément n'est pas trouvé
+        return 0;
       }
     } else {
       print('Failed to load webpage');
-      return 0; // En cas d'échec du chargement de la page
+      return 0;
     }
   } catch (e) {
     print('Error parsing HTML: $e');
-    return 0; // Retourne 0 en cas d'erreur
+    return 0;
+  }
+}
+
+Future<int> extractResultsMelonbooks(String artistName) async {
+  try {
+    String encodedArtistName = Uri.encodeComponent(artistName);
+    String url = 'https://www.melonbooks.co.jp/search/search.php?mode=search&search_disp=&category_id=0&text_type=&name=$encodedArtistName';
+
+    var response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      String htmlContent = response.body;
+
+      dom.Document document = parser.parse(htmlContent);
+
+      dom.Element? resultCountElement = document.querySelector('#contents > div > div.search-console > div > div > p');
+
+      if (resultCountElement != null) {
+        // Le texte devrait être quelque chose comme "X件" où X est le nombre de résultats
+        String resultText = resultCountElement.text;
+
+        RegExp regExp = RegExp(r'\d+');
+        Iterable<RegExpMatch> matches = regExp.allMatches(resultText);
+
+        if (matches.isNotEmpty) {
+          return int.parse(matches.first.group(0) ?? '0');
+        } else {
+          return 0;
+        }
+      } else {
+        return 0;
+      }
+    } else {
+      print('Failed to load webpage');
+      return 0;
+    }
+  } catch (e) {
+    print('Error parsing HTML: $e');
+    return 0;
   }
 }
