@@ -158,3 +158,172 @@ Future<int> extractResultsMelonbooks(String artistName) async {
     return 0;
   }
 }
+
+Future<int> extractResultsRakuten(String searchQuery) async {
+  try {
+    // Encode le terme de recherche pour l'URL
+    String encodedSearchQuery = Uri.encodeComponent(searchQuery);
+    // Construit l'URL de recherche Rakuten avec le terme de recherche encodé
+    String url = 'https://search.rakuten.co.jp/search/mall/$encodedSearchQuery/';
+
+    // Envoie la requête HTTP et attend la réponse
+    var response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      String htmlContent = response.body; // Obtient le contenu de la réponse
+
+      // Parse le contenu HTML pour créer un document DOM
+      dom.Document document = parser.parse(htmlContent);
+
+      // Utilise le sélecteur CSS pour trouver l'élément avec le nombre de résultats
+      dom.Element? resultCountElement = document.querySelector('#root > div.dui-container.nav > div > div > div.item.breadcrumb-model.breadcrumb.-fluid > div > span.count._medium');
+
+      if (resultCountElement != null) {
+        // Extrait le texte, qui est attendu sous la forme "1〜3件 （3件）"
+        String resultText = resultCountElement.text;
+
+        // Utilise RegExp pour extraire le nombre total de résultats
+        RegExp regExp = RegExp(r'\d+件\）$');
+        Iterable<RegExpMatch> matches = regExp.allMatches(resultText);
+
+        if (matches.isNotEmpty) {
+          // Extrait le nombre total de résultats à partir du match
+          String totalResults = matches.last.group(0)?.replaceAll('件）', '') ?? '0';
+          return int.parse(totalResults);
+        } else {
+          return 0; // Retourne 0 si aucun nombre n'est trouvé
+        }
+      } else {
+        return 0; // Retourne 0 si l'élément n'est pas trouvé
+      }
+    } else {
+      print('Failed to load webpage');
+      return 0; // Retourne 0 en cas d'échec de la requête
+    }
+  } catch (e) {
+    print('Error parsing HTML: $e');
+    return 0; // Retourne 0 en cas d'erreur lors du parsing
+  }
+}
+
+
+Future<int> extractResultsSurugaya(String searchQuery) async {
+  try {
+    // Encode le terme de recherche pour l'URL
+    String encodedSearchQuery = Uri.encodeComponent(searchQuery);
+    // Construit l'URL de recherche Surugaya avec le terme de recherche encodé
+    String url = 'https://www.suruga-ya.com/en/products?keyword=$encodedSearchQuery&btn_search=&in_stock=f';
+
+    // Envoie la requête HTTP et attend la réponse
+    var response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      String htmlContent = response.body; // Obtient le contenu de la réponse
+
+      // Parse le contenu HTML pour créer un document DOM
+      dom.Document document = parser.parse(htmlContent);
+
+      // Utilise le sélecteur CSS pour trouver l'élément avec le nombre de résultats
+      dom.Element? resultCountElement = document.querySelector('.alert-total-products');
+      if (resultCountElement != null) {
+        // Extrait le texte, qui est attendu sous la forme "1-10 of over 10 results"
+        String resultText = resultCountElement.text.trim();
+        // Utilise RegExp pour extraire le nombre total de résultats
+        RegExp regExp = RegExp(r'over\s+(\d+)\s+results');
+        var match = regExp.firstMatch(resultText);
+        if (match != null && match.groupCount >= 1) {
+          // Convertit la chaîne capturée en un entier et le retourne
+          return int.parse(match.group(1) ?? '0');
+        } else {
+          return 0; // Retourne 0 si aucun nombre n'est trouvé
+        }
+      } else {
+        return 0; // Retourne 0 si l'élément n'est pas trouvé
+      }
+    } else {
+      print('Failed to load webpage');
+      return 0; // Retourne 0 en cas d'échec de la requête
+    }
+  } catch (e) {
+    print('Error parsing HTML: $e');
+    return 0; // Retourne 0 en cas d'erreur lors du parsing
+  }
+}
+
+Future<int> extractResultsToranoana(String searchQuery) async {
+  try {
+    // Encode le terme de recherche pour l'URL
+    String encodedSearchQuery = Uri.encodeComponent(searchQuery);
+    // Construit l'URL de recherche Toranoana avec le terme de recherche encodé
+    String url = 'https://ecs.toranoana.jp/tora/ec/app/catalog/list/?searchWord=$encodedSearchQuery&searchBackorderFlg=1&searchUsedItemFlg=1&searchDisplay=0&detailSearch=true';
+
+    // Envoie la requête HTTP et attend la réponse
+    var response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      String htmlContent = response.body; // Obtient le contenu de la réponse
+      // Parse le contenu HTML pour créer un document DOM
+      var document = parser.parse(htmlContent);
+
+      // Utilise le sélecteur CSS pour trouver la balise meta avec le nom "description"
+      var metaDescription = document.querySelector('meta[name="description"]');
+
+      if (metaDescription != null) {
+        // Extrait le contenu de l'attribut "content"
+        String content = metaDescription.attributes['content'] ?? '';
+
+        // Recherche du nombre à l'aide d'une expression régulière
+        final RegExp regExp = RegExp(r'\d+');
+        final match = regExp.firstMatch(content);
+
+        if (match != null) {
+          // Conversion du nombre extrait en entier
+          return int.parse(match.group(0)!);
+        }
+      }
+      return 0; // Retourne 0 si l'élément ou le nombre n'est pas trouvé
+    } else {
+      print('Failed to load webpage');
+      return 0; // Retourne 0 en cas d'échec de la requête
+    }
+  } catch (e) {
+    print('Error: $e');
+    return 0; // Retourne 0 en cas d'erreur lors du parsing ou de la requête
+  }
+}
+
+Future<int> extractTotalResultsYahooAuction(String searchQuery) async {
+  try {
+    String url = 'https://buyee.jp/item/search/query/$searchQuery?conversionType=top_page_search';
+
+    var headers = {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G996U Build/QP1A.190711.020; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Mobile Safari/537.36',
+      'Cookie': 'otherbuyee=ft7mnj5cb3bdvjbqinkltr0bm5',
+    };
+
+    var response = await http.get(Uri.parse(url), headers: headers);
+    print(response.body);
+    if (response.statusCode == 200) {
+      var document = parser.parse(response.body);
+
+      // Utilisation du sélecteur CSS pour trouver l'élément contenant le nombre de résultats
+      var resultsElement = document.querySelector('#content_inner > form > div.search_options > div.result-num');
+
+      if (resultsElement != null) {
+        String resultsText = resultsElement.text;
+        // Utilisation d'une RegExp pour extraire le nombre total de résultats
+        RegExp regExp = RegExp(r'/ (\d+) résultat');
+        var match = regExp.firstMatch(resultsText);
+        if (match != null && match.groupCount >= 1) {
+          return int.parse(match.group(1)!);
+        }
+      }
+    } else {
+      print('Failed to load webpage with status code: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error: $e');
+  }
+  return 0; // Retourne 0 si l'élément n'est pas trouvé ou en cas d'erreur
+}
+
