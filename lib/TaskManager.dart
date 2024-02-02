@@ -1,10 +1,20 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'SiteChecker.dart';
 
 class TaskManager {
   static SharedPreferences? _prefs;
+
+  static Future<void> printSharedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    print('Shared Preferences:');
+    prefs.getKeys().forEach((key) {
+      print('$key: ${prefs.get(key)}');
+    });
+  }
+
 
   /// Initialise les SharedPreferences et Workmanager.
   static Future<void> init() async {
@@ -71,22 +81,76 @@ class TaskManager {
 
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    // Initialisez le service de notification si ce n'est pas déjà fait
+    await Firebase.initializeApp(); // Assurez-vous que Firebase est initialisé
     NotificationService.initialize();
-    print("InputData reçu: $inputData");
-    // Assurez-vous d'initialiser Firebase ici si nécessaire
-    final String userId = inputData?['userId'];
-    final String artistName = inputData?['artistName'];
 
+    final String? userId = inputData?['userId'];
+    final String? artistName = inputData?['artistName'];
 
-    await NotificationService.showNotification(
-        0, // ID de la notification
-        "Alerte pour $artistName",
-        "Des nouveaux articles sont disponibles pour $artistName.",
-        "Payload supplémentaire" // Utilisé pour identifier la notification ou passer des données supplémentaires
-    );
+    if (userId == null || artistName == null) {
+      return Future.value(false); // Termine la tâche si userId ou artistName est nul
+    }
 
-    return Future.value(true); // Retournez true si la tâche a été exécutée avec succès
+    DocumentSnapshot userPreferences = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('alerts')
+        .doc(artistName)
+        .get();
+
+    if (userPreferences.exists) {
+      var data = userPreferences.data() as Map<String, dynamic>?; // Cast explicite
+      if (data != null) {
+        await TaskManager.printSharedPreferences(); // Imprime les SharedPreferences si besoin
+        var sitesData = data['sites'] as Map<String, dynamic>?; // Cast explicite pour 'sites'
+        if (sitesData != null) {
+          for (var entry in sitesData.entries) {
+            String siteKey = entry.key;
+            bool shouldCheck = entry.value;
+            if (shouldCheck) {
+              int resultCount = 0;
+              switch (siteKey) {
+                case 'Booth':
+                  resultCount = await extractResultsBooth(artistName);
+                  break;
+                case 'Mandarake':
+                  resultCount = await extractResultsMandarake(artistName);
+                  break;
+                case 'Melonbooks':
+                  resultCount = await extractResultsMelonbooks(artistName);
+                  break;
+                case 'Rakuten':
+                  resultCount = await extractResultsRakuten(artistName);
+                  break;
+                case 'Surugaya':
+                  resultCount = await extractResultsSurugaya(artistName);
+                  break;
+                case 'Toranoana':
+                  resultCount = await extractResultsToranoana(artistName);
+                  break;
+                case 'YahooJapanAuction':
+                  resultCount = await extractTotalResultsYahooAuction(artistName);
+                  break;
+              }
+
+              // Si de nouveaux éléments sont disponibles, envoyez une notification
+              if (resultCount > 0) {
+                String notificationMessage = "Des nouveaux articles sont disponibles sur $siteKey pour $artistName.";
+                await NotificationService.showNotification(
+                    0, // ID de la notification
+                    "Alerte pour $artistName",
+                    notificationMessage,
+                    "Payload supplémentaire" // Utilisé pour identifier la notification ou passer des données supplémentaires
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+    return Future.value(true);
   });
 }
+
+
 

@@ -126,8 +126,8 @@ class _EditAlerteState extends State<EditAlerte> {
   void updateAlert() async {
     if (!isDurationValid(days, hours, minutes)) {
       showErrorDialog(
-          "Durée Invalide",
-          "La durée doit être d'au moins 5 minutes."
+          "Invalid Duration",
+          "Length between checks must be at least 15 minutes."
       );
       return;
     }
@@ -286,7 +286,7 @@ class _EditAlerteState extends State<EditAlerte> {
                   Expanded(
                     child: TimeCard(
                       label: "Days",
-                      minValue: 1,
+                      minValue: 0,
                       maxValue: 7,
                       value: days,
                       onChanged: (val) => setState(() => days = val),

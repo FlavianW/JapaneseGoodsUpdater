@@ -8,8 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
-import 'package:workmanager/workmanager.dart';
 import 'Accueil.dart';
+import 'SiteChecker.dart';
 
 
 
@@ -26,7 +26,6 @@ class CreerAlerte extends StatefulWidget {
 
 class _CreerAlerteState extends State<CreerAlerte> {
 
-  static const platform = MethodChannel('com.exemple.japanesegoodstool/workmanager');
   TextEditingController artistController = TextEditingController();
   String? artistError; // Variable pour le message d'erreur
 
@@ -36,14 +35,20 @@ class _CreerAlerteState extends State<CreerAlerte> {
       minutes = 0;
   bool sendNotifications = false;
   File? _image;
-  bool YahooJapanAuction = true;
-  bool YahooJapanShopping = true;
   bool Melonbooks = true;
   bool Rakuten = true;
   bool Booth = true;
   bool Surugaya = true;
   bool Toranoana = true;
   bool Mandarake = true;
+
+  void initState() {
+    super.initState();
+    days = 1; // Assurez-vous que days est initialisé à 1 par défaut
+    hours = 0; // Initialisez à la valeur par défaut souhaitée
+    minutes = 0; // Initialisez à la valeur par défaut souhaitée
+    // Toute autre initialisation nécessaire peut être ajoutée ici
+  }
 
 
   Future<void> pickImage() async {
@@ -82,10 +87,11 @@ class _CreerAlerteState extends State<CreerAlerte> {
   }
 
   bool isDurationValid(int days, int hours, int minutes) {
-    // Convertissez tout en minutes et vérifiez si le total est >= 5 minutes
+    // Convertissez tout en minutes et vérifiez si le total est >= 15 minutes
     int totalMinutes = days * 24 * 60 + hours * 60 + minutes;
     return totalMinutes >= 15;
   }
+
   void showErrorDialog(String title, String content) {
     showDialog(
       context: context,
@@ -109,8 +115,8 @@ class _CreerAlerteState extends State<CreerAlerte> {
     void addAlert() async {
       if (!isDurationValid(days, hours, minutes)) {
         showErrorDialog(
-            "Durée Invalide",
-            "La durée doit être d'au moins 5 minutes."
+            "Invalid Duration",
+            "Length between checks must be at least 15 minutes."
         );
         return;
       }
@@ -166,8 +172,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'sendNotifications': sendNotifications,
         'imageUrl': '',
         'sites': {
-          'YahooJapanAuction': YahooJapanAuction,
-          'YahooJapanShopping': YahooJapanShopping,
           'Melonbooks': Melonbooks,
           'Rakuten': Rakuten,
           'Booth': Booth,
@@ -175,13 +179,39 @@ class _CreerAlerteState extends State<CreerAlerte> {
           'Toranoana': Toranoana,
           'Mandarake': Mandarake,
         },
+        'siteResults': {},
       };
 
+      // Collecte des résultats pour chaque site activé
+      // Initialize siteResults map to store the results from each site
+      Map<String, int> siteResults = {};
 
+      // Check each site and add the future to a list
+      List<Future> checkFutures = [];
+      if (Melonbooks) checkFutures.add(extractResultsMelonbooks(artistController.text).then((result) => siteResults['Melonbooks'] = result));
+      if (Rakuten) checkFutures.add(extractResultsRakuten(artistController.text).then((result) => siteResults['Rakuten'] = result));
+      if (Booth) checkFutures.add(extractResultsBooth(artistController.text).then((result) => siteResults['Booth'] = result));
+      if (Surugaya) checkFutures.add(extractResultsSurugaya(artistController.text).then((result) => siteResults['Surugaya'] = result));
+      if (Toranoana) checkFutures.add(extractResultsToranoana(artistController.text).then((result) => siteResults['Toranoana'] = result));
+      if (Mandarake) checkFutures.add(extractResultsMandarake(artistController.text).then((result) => siteResults['Mandarake'] = result));
+
+      // Wait for all the checks to complete
+      await Future.wait(checkFutures);
+
+      // Mise à jour de alertData avec les résultats des sites
+      alertData['siteResults'] = siteResults;
+
+      // Ajout de l'alerte à Firestore
+      await firestoreInstance.collection('users').doc(widget.uid).collection('alerts').add(alertData);
+
+      // Afficher un message ou effectuer une action après l'enregistrement
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
+
+      widget.onAlertAdded(); // Appeler la méthode de rappel après l'ajout réussi
+      Navigator.pop(context); // Retourner à l'écran précédent
 
       Future<String> uploadImage(File image) async {
         String extension = path.extension(image.path);
-
         if (extension.toLowerCase() != '.png' && extension.toLowerCase() != '.jpg') {
           throw Exception('Only PNG and JPG files are allowed');
         }
@@ -189,7 +219,11 @@ class _CreerAlerteState extends State<CreerAlerte> {
         String fileName = 'alerts/${widget.uid}/${DateTime.now().millisecondsSinceEpoch}$extension';
         Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
         UploadTask uploadTask = storageRef.putFile(image);
+
+        // Attendre la fin de l'upload
         await uploadTask;
+
+        // Récupérer et retourner l'URL de l'image
         return await storageRef.getDownloadURL();
       }
 
@@ -208,6 +242,8 @@ class _CreerAlerteState extends State<CreerAlerte> {
       setState(() {
         artistError = null;
       });
+
+
 
 
       void addAlertToFirestore(Map<String, dynamic> alertData) async {
@@ -301,6 +337,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                       label: "Days",
                       minValue: 0,
                       maxValue: 7,
+                      defaultValue: days, // Assurez-vous que la valeur par défaut est bien passée
                       onChanged: (val) => setState(() => days = val),
                     ),
                   ),
@@ -308,7 +345,8 @@ class _CreerAlerteState extends State<CreerAlerte> {
                     child: TimeCard(
                       label: "Hours",
                       minValue: 0,
-                      maxValue: 23,
+                      maxValue: 59,
+                      defaultValue: hours, // Assurez-vous de fournir la valeur actuelle de days comme defaultValue
                       onChanged: (val) => setState(() => hours = val),
                     ),
                   ),
@@ -317,6 +355,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                       label: "Minutes",
                       minValue: 0,
                       maxValue: 59,
+                      defaultValue: minutes, // Assurez-vous de fournir la valeur actuelle de days comme defaultValue
                       onChanged: (val) => setState(() => minutes = val),
                     ),
                   ),
@@ -339,12 +378,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
                 ),
               ),
               // Ajout des CheckboxListTile pour chaque site
-              _buildCheckboxListTile("Yahoo! Japan Auction", YahooJapanAuction, (bool value) {
-                setState(() => YahooJapanAuction = value);
-              }),
-              _buildCheckboxListTile("Yahoo! Japan Shopping", YahooJapanShopping, (bool value) {
-                setState(() => YahooJapanShopping = value);
-              }),
               _buildCheckboxListTile("Melonbooks", Melonbooks, (bool value) {
                 setState(() => Melonbooks = value);
               }),
@@ -403,29 +436,39 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
 class TimeCard extends StatefulWidget {
   final String label;
-  final int minValue, maxValue;
+  final int minValue, maxValue, defaultValue;
   final Function(int) onChanged;
 
-  const TimeCard({super.key, required this.label, required this.minValue, required this.maxValue, required this.onChanged});
+  const TimeCard({
+    super.key,
+    required this.label,
+    required this.minValue,
+    required this.maxValue,
+    required this.defaultValue,
+    required this.onChanged,
+  });
 
   @override
   _TimeCardState createState() => _TimeCardState();
 }
 
 class _TimeCardState extends State<TimeCard> {
-  int currentValue = 0;
+  late int currentValue; // Ajoutez cette ligne ici
 
   @override
   void initState() {
     super.initState();
-    currentValue = widget.minValue;
+    currentValue = widget.defaultValue; // Initialisez currentValue avec defaultValue
   }
 
   @override
   Widget build(BuildContext context) {
     List<DropdownMenuItem<int>> menuItems = List.generate(
       widget.maxValue - widget.minValue + 1,
-          (index) => DropdownMenuItem(value: widget.minValue + index, child: Text('${widget.minValue + index}')),
+          (index) => DropdownMenuItem(
+        value: widget.minValue + index,
+        child: Text('${widget.minValue + index}'),
+      ),
     );
 
     return Card(
@@ -434,12 +477,12 @@ class _TimeCardState extends State<TimeCard> {
         children: [
           Text(widget.label),
           DropdownButton<int>(
-            value: currentValue,
+            value: currentValue, // Utilisez la valeur de currentValue ici
             items: menuItems,
             onChanged: (int? newValue) {
               setState(() {
-                currentValue = newValue!;
-                widget.onChanged(currentValue);
+                currentValue = newValue!; // Mettez à jour currentValue
+                widget.onChanged(newValue); // Appelez widget.onChanged avec la nouvelle valeur
               });
             },
           ),

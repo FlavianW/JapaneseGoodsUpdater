@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'TaskManager.dart';
-import 'package:workmanager/workmanager.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
 import 'dart:convert';
