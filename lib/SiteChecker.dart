@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
@@ -164,7 +162,7 @@ Future<int> extractResultsRakuten(String searchQuery) async {
     // Encode le terme de recherche pour l'URL
     String encodedSearchQuery = Uri.encodeComponent(searchQuery);
     // Construit l'URL de recherche Rakuten avec le terme de recherche encodé
-    String url = 'https://search.rakuten.co.jp/search/mall/$encodedSearchQuery/';
+    String url = 'https://search.rakuten.co.jp/search/mall/$encodedSearchQuery'+'/?sf=1';
 
     // Envoie la requête HTTP et attend la réponse
     var response = await http.get(Uri.parse(url));
@@ -182,13 +180,12 @@ Future<int> extractResultsRakuten(String searchQuery) async {
         // Extrait le texte, qui est attendu sous la forme "1〜3件 （3件）"
         String resultText = resultCountElement.text;
 
-        // Utilise RegExp pour extraire le nombre total de résultats
-        RegExp regExp = RegExp(r'\d+件\）$');
+        RegExp regExp = RegExp(r'（(\d{1,3}(,\d{3})*)件）'); // Cette expression régulière vise la partie entre parenthèses
         Iterable<RegExpMatch> matches = regExp.allMatches(resultText);
 
         if (matches.isNotEmpty) {
           // Extrait le nombre total de résultats à partir du match
-          String totalResults = matches.last.group(0)?.replaceAll('件）', '') ?? '0';
+          String totalResults = matches.first.group(1)?.replaceAll(',', '') ?? '0'; // Supprime les virgules avant de convertir
           return int.parse(totalResults);
         } else {
           return 0; // Retourne 0 si aucun nombre n'est trouvé
@@ -292,38 +289,4 @@ Future<int> extractResultsToranoana(String searchQuery) async {
   }
 }
 
-Future<int> extractTotalResultsYahooAuction(String searchQuery) async {
-  try {
-    String url = 'https://buyee.jp/item/search/query/$searchQuery?conversionType=top_page_search';
-
-    var headers = {
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G996U Build/QP1A.190711.020; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Mobile Safari/537.36',
-      'Cookie': 'otherbuyee=ft7mnj5cb3bdvjbqinkltr0bm5',
-    };
-
-    var response = await http.get(Uri.parse(url), headers: headers);
-    print(response.body);
-    if (response.statusCode == 200) {
-      var document = parser.parse(response.body);
-
-      // Utilisation du sélecteur CSS pour trouver l'élément contenant le nombre de résultats
-      var resultsElement = document.querySelector('#content_inner > form > div.search_options > div.result-num');
-
-      if (resultsElement != null) {
-        String resultsText = resultsElement.text;
-        // Utilisation d'une RegExp pour extraire le nombre total de résultats
-        RegExp regExp = RegExp(r'/ (\d+) résultat');
-        var match = regExp.firstMatch(resultsText);
-        if (match != null && match.groupCount >= 1) {
-          return int.parse(match.group(1)!);
-        }
-      }
-    } else {
-      print('Failed to load webpage with status code: ${response.statusCode}');
-    }
-  } catch (e) {
-    print('Error: $e');
-  }
-  return 0; // Retourne 0 si l'élément n'est pas trouvé ou en cas d'erreur
-}
 

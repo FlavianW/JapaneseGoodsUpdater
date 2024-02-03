@@ -128,9 +128,6 @@ void callbackDispatcher() {
                 case 'Toranoana':
                   resultCount = await extractResultsToranoana(artistName);
                   break;
-                case 'YahooJapanAuction':
-                  resultCount = await extractTotalResultsYahooAuction(artistName);
-                  break;
               }
 
               // Si de nouveaux éléments sont disponibles, envoyez une notification

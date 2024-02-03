@@ -112,6 +112,24 @@ class _CreerAlerteState extends State<CreerAlerte> {
     );
   }
 
+  Future<String> uploadImage(File image) async {
+    String extension = path.extension(image.path);
+    if (extension.toLowerCase() != '.png' && extension.toLowerCase() != '.jpg') {
+      throw Exception('Only PNG and JPG files are allowed');
+    }
+
+    String fileName = 'alerts/${widget.uid}/${DateTime.now().millisecondsSinceEpoch}$extension';
+    print(fileName);
+    Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
+    UploadTask uploadTask = storageRef.putFile(image);
+    // Attendre la fin de l'upload
+    await uploadTask;
+    // Récupérer et retourner l'URL de l'image
+    String downloadUrl = await storageRef.getDownloadURL();
+    print(downloadUrl);
+    return downloadUrl;
+  }
+
     void addAlert() async {
       if (!isDurationValid(days, hours, minutes)) {
         showErrorDialog(
@@ -170,7 +188,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'hours': hours,
         'minutes': minutes,
         'sendNotifications': sendNotifications,
-        'imageUrl': '',
+        'imageUrl': null,
         'sites': {
           'Melonbooks': Melonbooks,
           'Rakuten': Rakuten,
@@ -201,36 +219,16 @@ class _CreerAlerteState extends State<CreerAlerte> {
       // Mise à jour de alertData avec les résultats des sites
       alertData['siteResults'] = siteResults;
 
-      // Ajout de l'alerte à Firestore
-      await firestoreInstance.collection('users').doc(widget.uid).collection('alerts').add(alertData);
-
-      // Afficher un message ou effectuer une action après l'enregistrement
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
-
-      widget.onAlertAdded(); // Appeler la méthode de rappel après l'ajout réussi
-      Navigator.pop(context); // Retourner à l'écran précédent
-
-      Future<String> uploadImage(File image) async {
-        String extension = path.extension(image.path);
-        if (extension.toLowerCase() != '.png' && extension.toLowerCase() != '.jpg') {
-          throw Exception('Only PNG and JPG files are allowed');
+      try {
+        if (_image != null) {
+          String imageUrl = await uploadImage(_image!);
+          alertData['imageUrl'] = imageUrl;
+          print(alertData['imageUrl']);
         }
-
-        String fileName = 'alerts/${widget.uid}/${DateTime.now().millisecondsSinceEpoch}$extension';
-        Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
-        UploadTask uploadTask = storageRef.putFile(image);
-
-        // Attendre la fin de l'upload
-        await uploadTask;
-
-        // Récupérer et retourner l'URL de l'image
-        return await storageRef.getDownloadURL();
+      } catch (e) {
+        print("Erreur lors du téléchargement de l'image : $e");
       }
 
-      if (_image != null) {
-        String imageUrl = await uploadImage(_image!);
-        alertData['imageUrl'] = imageUrl;
-      }
 
       if (artistController.text.isEmpty) {
         setState(() {
@@ -239,11 +237,10 @@ class _CreerAlerteState extends State<CreerAlerte> {
         return; // Ne pas continuer si le champ est vide
       }
 
+      if (!mounted) return;
       setState(() {
         artistError = null;
       });
-
-
 
 
       void addAlertToFirestore(Map<String, dynamic> alertData) async {
@@ -282,17 +279,19 @@ class _CreerAlerteState extends State<CreerAlerte> {
         await prefs.setStringList('artistes', artistesString);
       }
 
+      print(alertData);
+      print("Alert added");
+      await firestoreInstance.collection('users').doc(widget.uid).collection('alerts').add(alertData);
 
-      addAlertToFirestore(alertData);
-      addAlertToSharedPreferences(alertData);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
+      widget.onAlertAdded();
 
+
+      Navigator.pop(context); // Retournez à l'écran précédent après l'ajout
       // Afficher un message ou effectuer une action après l'enregistrement
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Alert added")),
       );
-
-      widget.onAlertAdded(); // Appeler la méthode de rappel après l'ajout réussi
-      Navigator.pop(context); // Retourner à l'écran précédent
 
     }
 
