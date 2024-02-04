@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 import 'Accueil.dart';
 import 'SiteChecker.dart';
+import 'TaskManager.dart';
 
 
 
@@ -259,7 +260,16 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'minutes': minutes,
       }));
       await prefs.setStringList('artistes', artistesString);
-
+      String taskName = "task_${artistController.text}";
+      await TaskManager.setTaskScheduled(
+          taskName,
+          true,
+          days,
+          hours,
+          minutes,
+          widget.uid,
+          artistController.text
+      );
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
       widget.onAlertAdded();
 

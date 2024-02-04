@@ -368,20 +368,18 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     // Chargement de l'état isTaskActive depuis SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     List<String>? artistesString = prefs.getStringList('artistes');
+
     Map<String, bool> isTaskActiveMap = {};
     if (artistesString != null) {
       for (var str in artistesString) {
-        var artiste = Artiste.fromJson(json.decode(str));
+        Artiste artiste = Artiste.fromJson(json.decode(str));
         isTaskActiveMap[artiste.nom] = artiste.isTaskActive;
       }
     }
 
     // Appliquer l'état isTaskActive aux artistes chargés depuis Firestore
-    for (var artiste in loadedArtistes) {
-      var nomArtiste = artiste.nom;
-      if (isTaskActiveMap.containsKey(nomArtiste)) {
-        artiste.isTaskActive = isTaskActiveMap[nomArtiste]!;
-      }
+    for (Artiste artiste in loadedArtistes) {
+      artiste.isTaskActive = isTaskActiveMap[artiste.nom] ?? false; // Utiliser false comme valeur par défaut
     }
 
     if (mounted) {

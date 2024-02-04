@@ -218,6 +218,26 @@ class _EditAlerteState extends State<EditAlerte> {
             );
           }
 
+          final prefs = await SharedPreferences.getInstance();
+          List<String>? artistesString = prefs.getStringList('artistes');
+          print(prefs.getStringList('artistes'));
+          if (artistesString != null) {
+            List<String> updatedArtistesString = [];
+            for (var str in artistesString) {
+              var artiste = json.decode(str);
+              if (artiste['nom'] == artistBase) { // artistBase est l'ancien nom de l'artiste
+                artiste['nom'] = artistController.text; // Mettre à jour avec le nouveau nom
+                artiste['hours'] = hours;
+                artiste['minutes'] = minutes;
+                artiste['days'] = days;
+                artiste['sendNotifications'] = sendNotifications;
+                artiste['isTaskActive'] = true;
+              }
+              updatedArtistesString.add(json.encode(artiste));
+            }
+            await prefs.setStringList('artistes', updatedArtistesString);
+          }
+
           widget.onAlertAdded(); // Appeler le rappel après la mise à jour
 
           Navigator.pop(context); // Retour à l'écran précédent

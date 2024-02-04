@@ -80,29 +80,34 @@ class TaskManager {
 }
 
 void callbackDispatcher() {
+  print("Tâche en arrière-plan exécutée");
   Workmanager().executeTask((task, inputData) async {
-    await Firebase.initializeApp(); // Assurez-vous que Firebase est initialisé
+    await Firebase.initializeApp(); // Ensure Firebase is initialized
     NotificationService.initialize();
 
     final String? userId = inputData?['userId'];
     final String? artistName = inputData?['artistName'];
 
     if (userId == null || artistName == null) {
-      return Future.value(false); // Termine la tâche si userId ou artistName est nul
+      return Future.value(false); // End task if userId or artistName is null
     }
 
-    DocumentSnapshot userPreferences = await FirebaseFirestore.instance
+    // Reference to the user's alert document
+    DocumentReference alertDocRef = FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .collection('alerts')
-        .doc(artistName)
-        .get();
+        .doc(artistName);
+
+    DocumentSnapshot userPreferences = await alertDocRef.get();
 
     if (userPreferences.exists) {
-      var data = userPreferences.data() as Map<String, dynamic>?; // Cast explicite
+      var data = userPreferences.data() as Map<String, dynamic>?; // Explicit cast
       if (data != null) {
-        await TaskManager.printSharedPreferences(); // Imprime les SharedPreferences si besoin
-        var sitesData = data['sites'] as Map<String, dynamic>?; // Cast explicite pour 'sites'
+        var sitesData = data['sites'] as Map<String, dynamic>?; // Explicit cast for 'sites'
+        Map<String, int> lastCheckResults = data['siteResultsLastCheck'] != null ? Map<String, int>.from(data['siteResultsLastCheck']) : {};
+        Map<String, int> newCheckResults = {};
+
         if (sitesData != null) {
           for (var entry in sitesData.entries) {
             String siteKey = entry.key;
@@ -130,24 +135,35 @@ void callbackDispatcher() {
                   break;
               }
 
-              // Si de nouveaux éléments sont disponibles, envoyez une notification
-              if (resultCount > 0) {
+              newCheckResults[siteKey] = resultCount;
+
+              // If new items are available (compared to last check), send a notification
+              if (resultCount > (lastCheckResults[siteKey] ?? 0)) {
                 String notificationMessage = "Des nouveaux articles sont disponibles sur $siteKey pour $artistName.";
                 await NotificationService.showNotification(
-                    0, // ID de la notification
+                    0, // Notification ID
                     "Alerte pour $artistName",
                     notificationMessage,
-                    "Payload supplémentaire" // Utilisé pour identifier la notification ou passer des données supplémentaires
+                    "Payload supplémentaire" // Used to identify the notification or pass additional data
                 );
               }
             }
           }
         }
+
+        // Update Firestore with the latest results
+        await alertDocRef.update({
+          'siteResultsLastCheck': newCheckResults,
+        });
       }
     }
     return Future.value(true);
   });
 }
+
+
+
+
 
 
 
