@@ -242,46 +242,23 @@ class _CreerAlerteState extends State<CreerAlerte> {
         artistError = null;
       });
 
-
-      void addAlertToFirestore(Map<String, dynamic> alertData) async {
-        final firestoreInstance = FirebaseFirestore.instance;
-        // Ajouter une nouvelle alerte dans une sous-collection pour cet utilisateur
-        await firestoreInstance.collection('users')
-            .doc(widget.uid)
-            .collection('alerts')
-            .add(
-            alertData); // Utilisez add() pour créer un nouveau document avec un ID unique
-      }
-
-      void addAlertToSharedPreferences(Map<String, dynamic> alertData) async {
-        final prefs = await SharedPreferences.getInstance();
-
-        // Chargez la liste actuelle des artistes des SharedPreferences
-        List<String>? artistesString = prefs.getStringList('artistes');
-        List<Artiste> artistes = artistesString?.map((str) => Artiste.fromJson(json.decode(str))).toList() ?? [];
-
-        // Créer un nouvel objet Artiste pour la nouvelle alerte
-        Artiste newArtiste = Artiste(
-          nom: alertData['artist'],
-          alertesActivees: alertData['sendNotifications'],
-          imageUrl: alertData['imageUrl'],
-          days: alertData['days'],
-          hours: alertData['hours'],
-          minutes: alertData['minutes'],
-          isTaskActive: false, // L'état initial par défaut pour la nouvelle alerte
-        );
-
-        // Ajouter la nouvelle alerte à la liste
-        artistes.add(newArtiste);
-
-        // Sauvegarder la liste mise à jour dans SharedPreferences
-        artistesString = artistes.map((artiste) => json.encode(artiste.toJson())).toList();
-        await prefs.setStringList('artistes', artistesString);
-      }
-
       print(alertData);
       print("Alert added");
       await firestoreInstance.collection('users').doc(widget.uid).collection('alerts').add(alertData);
+
+      // Update SharedPreferences to reflect the new alert, including its active task status
+      final prefs = await SharedPreferences.getInstance();
+      List<String>? artistesString = prefs.getStringList('artistes') ?? [];
+      artistesString.add(json.encode({
+        'nom': artistController.text,
+        'notifzero': sendNotifications,
+        'imageUrl': alertData['imageUrl'],
+        'isTaskActive': true, // Set this to true as the task for this alert should be active
+        'days': days,
+        'hours': hours,
+        'minutes': minutes,
+      }));
+      await prefs.setStringList('artistes', artistesString);
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
       widget.onAlertAdded();
