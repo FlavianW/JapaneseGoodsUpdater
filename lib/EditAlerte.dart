@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
-import 'package:workmanager/workmanager.dart';
+import 'package:japanesegoodstool/TaskManager.dart';
 
 class EditAlerte extends StatefulWidget {
   final String uid;
@@ -30,12 +30,11 @@ class EditAlerte extends StatefulWidget {
 class _EditAlerteState extends State<EditAlerte> {
   final FirebaseFirestore firestoreInstance = FirebaseFirestore.instance;
   TextEditingController artistController = TextEditingController();
+  String artistBase = '';
   int days = 1;
   int hours = 0;
   int minutes = 0;
   bool sendNotifications = false;
-  bool YahooJapanAuction = false;
-  bool YahooJapanShopping = false;
   bool Melonbooks = false;
   bool Rakuten = false;
   bool Booth = false;
@@ -69,14 +68,12 @@ class _EditAlerteState extends State<EditAlerte> {
         var alertData = existingAlerts.docs[0].data() as Map<String, dynamic>;
         print(alertData);
         setState(() {
+          artistBase = alertData['artist'] ?? '';
           artistController.text = alertData['artist'] ?? '';
           days = alertData['days'] ?? 1;
           hours = alertData['hours'] ?? 0;
           minutes = alertData['minutes'] ?? 0;
           sendNotifications = alertData['sendNotifications'] ?? false;
-          YahooJapanAuction = alertData['sites']['YahooJapanAuction'] ?? false;
-          YahooJapanShopping =
-              alertData['sites']['YahooJapanShopping'] ?? false;
           Melonbooks = alertData['sites']['Melonbooks'] ?? false;
           Rakuten = alertData['sites']['Rakuten'] ?? false;
           Booth = alertData['sites']['Booth'] ?? false;
@@ -139,8 +136,6 @@ class _EditAlerteState extends State<EditAlerte> {
         'minutes': minutes,
         'sendNotifications': sendNotifications,
         'sites': {
-          'YahooJapanAuction': YahooJapanAuction,
-          'YahooJapanShopping': YahooJapanShopping,
           'Melonbooks': Melonbooks,
           'Rakuten': Rakuten,
           'Booth': Booth,
@@ -206,11 +201,28 @@ class _EditAlerteState extends State<EditAlerte> {
             .collection('alerts')
             .doc(documentId)
             .update(updateData)
-            .then((_) {
+            .then((_) async {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text("Alert updated")));
+
+          if (artistController.text != artistBase) {
+            await TaskManager.cancelTask('task_'+artistBase);
+            await TaskManager.setTaskScheduled(
+                "task_" + artistController.text,
+                true, // isScheduled
+                days,
+                hours,
+                minutes,
+                widget.uid,
+                artistController.text
+            );
+          }
+
           widget.onAlertAdded(); // Appeler le rappel après la mise à jour
+
           Navigator.pop(context); // Retour à l'écran précédent
+
+
         }).catchError((error) {
           print("Error updating alert: $error");
           // Gérer l'erreur ici, peut-être afficher un message à l'utilisateur
@@ -322,10 +334,6 @@ class _EditAlerteState extends State<EditAlerte> {
                   });
                 },
               ),
-              _buildSiteCheckbox("Yahoo! Japan Auction", YahooJapanAuction,
-                  (value) => setState(() => YahooJapanAuction = value!)),
-              _buildSiteCheckbox("Yahoo! Japan Shopping", YahooJapanShopping,
-                  (value) => setState(() => YahooJapanShopping = value!)),
               _buildSiteCheckbox("Melonbooks", Melonbooks,
                   (value) => setState(() => Melonbooks = value!)),
               _buildSiteCheckbox("Rakuten", Rakuten,
