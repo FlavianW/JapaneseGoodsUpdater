@@ -1,82 +1,80 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:background_fetch/background_fetch.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'SiteChecker.dart';
 
 class TaskManager {
-  static SharedPreferences? _prefs;
+  static const String taskUniqueId = "com.example.japanesegodstool.backgroundFetchTask";
 
-  static Future<void> printSharedPreferences() async {
+  /// Initialisation de Background Fetch.
+  static Future<void> initBackgroundFetch() async {
+    await Firebase.initializeApp();
+    BackgroundFetch.configure(BackgroundFetchConfig(
+      minimumFetchInterval: 15,
+      stopOnTerminate: false,
+      startOnBoot: true,
+      enableHeadless: true,
+    ), onBackgroundFetch);
+    BackgroundFetch.registerHeadlessTask(onBackgroundFetchHeadless);
+  }
+
+  static Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days, required int hours, required int minutes, required String userId, required String artistName}) async {
     final prefs = await SharedPreferences.getInstance();
-    print('Shared Preferences:');
-    prefs.getKeys().forEach((key) {
-      print('$key: ${prefs.get(key)}');
+    String taskConfig = jsonEncode({
+      'isEnabled': isEnabled,
+      'days': days,
+      'hours': hours,
+      'minutes': minutes,
+      'userId': userId,
+      'artistName': artistName,
     });
+    await prefs.setString(taskName, taskConfig);
   }
 
-
-  /// Initialise les SharedPreferences et Workmanager.
-  static Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-    Workmanager().initialize(
-      callbackDispatcher, // Le point d'entrée de la tâche en arrière-plan
-      isInDebugMode: true, // Mettez cela à false lorsque vous déployez l'application en production
-    );
-  }
-
-  /// Planifie une tâche périodique avec Workmanager.
-  static Future<void> setTaskScheduled(
-      String taskName,
-      bool isScheduled,
-      int days,
-      int hours,
-      int minutes,
-      String userId,
-      String artistName
-      ) async {
-    await _prefs?.setBool(taskName, isScheduled);
-    if (isScheduled) {
-      Map<String, dynamic> inputData = {
-        'userId': userId,
-        'artistName': artistName,
-      };
-      Duration interval = Duration(days: days, hours: hours, minutes: minutes);
-      await schedulePeriodicTask(taskName, interval, inputData);
-    } else {
-      await cancelTask(taskName);
-    }
-    print("Tâche $taskName mise à $isScheduled");
-  }
-
-  static Future<void> schedulePeriodicTask(
-      String taskName,
-      Duration interval,
-      Map<String, dynamic> inputData
-      ) async {
-    await Workmanager().registerPeriodicTask(
-      taskName,
-      taskName,
-      frequency: interval,
-      inputData: inputData, // Passer inputData à la tâche
-      constraints: Constraints(
-        networkType: NetworkType.connected,
-      ),
-    );
-    print("Tâche périodique $taskName planifiée pour s'exécuter toutes les ${interval.inMinutes} minutes.");
-  }
-
-  /// Annule une tâche spécifique.
   static Future<void> cancelTask(String taskName) async {
-    await Workmanager().cancelByUniqueName(taskName);
-    print("Tâche $taskName annulée.");
+    // Avec Background Fetch, il n'y a pas de méthode directe pour annuler une tâche spécifique.
+    // Vous devrez gérer cela logiquement dans vos callbacks en vérifiant si une tâche est toujours active.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool("$taskName:isScheduled", false);
   }
 
-  /// Annule toutes les tâches planifiées.
-  static Future<void> cancelAllTasks() async {
-    await Workmanager().cancelAll();
-    print("Toutes les tâches annulées");
+  Future<void> configureTask(String taskName, int intervalMinutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('$taskName:interval', intervalMinutes);
+    await prefs.setBool('$taskName:enabled', true);
   }
+
+  /// Callback pour les événements de fetch en arrière-plan.
+  // Callback pour Background Fetch
+  static void onBackgroundFetch(String taskId) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Vérifiez ici les configurations de tâche et exécutez la logique conditionnelle
+    String? taskConfig = prefs.getString(taskId);
+    if (taskConfig != null) {
+      Map<String, dynamic> config = jsonDecode(taskConfig);
+      if (config['isEnabled']) {
+        print("Tâche en arrière-plan exécutée");
+      }
+    }
+    BackgroundFetch.finish(taskId);
+  }
+
+
+  /// Callback pour les tâches headless.
+  static void onBackgroundFetchHeadless(HeadlessTask task) async {
+    var taskId = task.taskId;
+    if (task.timeout) {
+      // La tâche a expiré. Vous devez terminer immédiatement.
+      BackgroundFetch.finish(taskId);
+      return;
+    }
+
+    print("[BackgroundFetch] Headless event received.");
+
 }
 
 void callbackDispatcher() {
@@ -159,11 +157,7 @@ void callbackDispatcher() {
     }
     return Future.value(true);
   });
+  }
 }
-
-
-
-
-
 
 

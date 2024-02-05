@@ -13,11 +13,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   NotificationService.initialize();
   await Firebase.initializeApp();
-
+  await TaskManager.initBackgroundFetch();
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
   String? userId = prefs.getString('userId');
-  await TaskManager.init();
   if (isLoggedIn && userId != null) {
     runApp(MaterialApp(
       home: Accueil(uid: userId),

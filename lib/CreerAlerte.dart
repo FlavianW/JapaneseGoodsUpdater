@@ -261,14 +261,14 @@ class _CreerAlerteState extends State<CreerAlerte> {
       }));
       await prefs.setStringList('artistes', artistesString);
       String taskName = "task_${artistController.text}";
-      await TaskManager.setTaskScheduled(
-          taskName,
-          true,
-          days,
-          hours,
-          minutes,
-          widget.uid,
-          artistController.text
+      await TaskManager.setTaskEnabled(
+          "task_" + artistController.text,
+          true, // isEnabled
+          days: days,
+          hours: hours,
+          minutes: minutes,
+          userId: widget.uid,
+          artistName: artistController.text
       );
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
       widget.onAlertAdded();

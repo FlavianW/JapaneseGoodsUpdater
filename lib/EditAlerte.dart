@@ -207,16 +207,17 @@ class _EditAlerteState extends State<EditAlerte> {
 
           if (artistController.text != artistBase) {
             await TaskManager.cancelTask('task_'+artistBase);
-            await TaskManager.setTaskScheduled(
+            await TaskManager.setTaskEnabled(
                 "task_" + artistController.text,
-                true, // isScheduled
-                days,
-                hours,
-                minutes,
-                widget.uid,
-                artistController.text
+                true, // isEnabled
+                days: days,
+                hours: hours,
+                minutes: minutes,
+                userId: widget.uid,
+                artistName: artistController.text
             );
           }
+
 
           final prefs = await SharedPreferences.getInstance();
           List<String>? artistesString = prefs.getStringList('artistes');

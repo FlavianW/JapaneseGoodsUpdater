@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:background_fetch/background_fetch.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:japanesegoodstool/EditAlerte.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -140,7 +141,11 @@ class _AccueilState extends State<Accueil> {
     // Se déconnecter de FirebaseAuth
     await FirebaseAuth.instance.signOut();
 
-    await TaskManager.cancelAllTasks();
+    BackgroundFetch.stop().then((int status) {
+      print("Background Fetch stopped with status: $status");
+    });
+
+
     // Obtenir l'instance de SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -470,9 +475,15 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                   await saveArtistsToPrefs();
                                   String taskName = "task_${artiste.nom}";
                                   if (value) {
-                                    TaskManager.setTaskScheduled(
-                                        taskName, true, artiste.days,
-                                        artiste.hours, artiste.minutes, widget.uid, artiste.nom);
+                                    TaskManager.setTaskEnabled(
+                                      taskName,
+                                      true, // isScheduled
+                                      days: artiste.days,
+                                      hours: artiste.hours,
+                                      minutes: artiste.minutes,
+                                      userId: widget.uid,
+                                      artistName: artiste.nom,
+                                    );
                                   } else {
                                     TaskManager.cancelTask(taskName);
                                   }
