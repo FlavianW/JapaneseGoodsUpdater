@@ -2,37 +2,89 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:background_fetch/background_fetch.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'Accueil.dart';
 import 'SiteChecker.dart';
 
+
+class NotificationService {
+  static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  static Future<void> initialize() async {
+    var initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    var initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  static Future<void> showNotification(String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'your_channel_id', // Assurez-vous que cet ID est unique et correspond à un canal configuré.
+      'your_channel_name',
+      channelDescription: 'your_channel_description',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
+    );
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Générer un ID de notification unique basé sur l'horodatage actuel.
+    int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await flutterLocalNotificationsPlugin.show(
+      notificationId, // Utiliser un ID unique pour chaque notification.
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: 'item_x', // payload optionnel pour plus d'informations.
+    );
+  }
+
+}
+
+
 class TaskManager {
-  static const String taskUniqueId = "com.example.japanesegodstool.backgroundFetchTask";
 
   /// Initialisation de Background Fetch.
   static Future<void> initBackgroundFetch() async {
-    await Firebase.initializeApp();
+    // Configuration initiale de Background Fetch.
     BackgroundFetch.configure(BackgroundFetchConfig(
       minimumFetchInterval: 15,
       stopOnTerminate: false,
       startOnBoot: true,
       enableHeadless: true,
-    ), onBackgroundFetch);
-    BackgroundFetch.registerHeadlessTask(onBackgroundFetchHeadless);
+    ), (String taskId) async {
+      // Ceci est le callback pour les tâches régulières. Vous pouvez faire votre logique de fetch ici.
+      print("[BackgroundFetch] Event received: $taskId");
+
+      // Indique à Background Fetch que la tâche est terminée.
+      BackgroundFetch.finish(taskId);
+    }).then((int status) {
+      print('BackgroundFetch configure success: $status');
+    }).catchError((e) {
+      print('BackgroundFetch configure failed: $e');
+    });
+
+    // Enregistrement de la tâche sans tête.
+    BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
   }
 
   static Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days, required int hours, required int minutes, required String userId, required String artistName}) async {
-    final prefs = await SharedPreferences.getInstance();
-    String taskConfig = jsonEncode({
-      'isEnabled': isEnabled,
-      'days': days,
-      'hours': hours,
-      'minutes': minutes,
-      'userId': userId,
-      'artistName': artistName,
-    });
-    await prefs.setString(taskName, taskConfig);
+    if (isEnabled) {
+      int intervalMinutes = days * 24 * 60 + hours * 60 + minutes;
+      BackgroundFetch.scheduleTask(TaskConfig(
+        taskId: taskName,
+        delay: intervalMinutes * 60 * 1000,
+        stopOnTerminate: false,
+        startOnBoot: true,
+        enableHeadless: true,
+        periodic: true,
+      ));
+    } else {
+      BackgroundFetch.stop(taskName);
+    }
   }
 
   static Future<void> cancelTask(String taskName) async {
@@ -49,35 +101,51 @@ class TaskManager {
   }
 
   /// Callback pour les événements de fetch en arrière-plan.
-  // Callback pour Background Fetch
+  // Dans TaskManager ou un gestionnaire approprié
   static void onBackgroundFetch(String taskId) async {
     final prefs = await SharedPreferences.getInstance();
-    // Vérifiez ici les configurations de tâche et exécutez la logique conditionnelle
-    String? taskConfig = prefs.getString(taskId);
-    if (taskConfig != null) {
-      Map<String, dynamic> config = jsonDecode(taskConfig);
-      if (config['isEnabled']) {
-        print("Tâche en arrière-plan exécutée");
+    List<String>? artistesString = prefs.getStringList('artistes');
+    if (artistesString != null) {
+      for (var str in artistesString) {
+        Artiste artiste = Artiste.fromJson(json.decode(str));
+        // Vérifiez si la tâche doit être exécutée pour cet artiste basé sur leur configuration spécifique
+        // Par exemple, comparer le temps actuel à la dernière fois que la notification a été envoyée
+        // Si la tâche doit être exécutée, envoyez la notification
       }
     }
     BackgroundFetch.finish(taskId);
   }
 
 
+
   /// Callback pour les tâches headless.
-  static void onBackgroundFetchHeadless(HeadlessTask task) async {
-    var taskId = task.taskId;
-    if (task.timeout) {
-      // La tâche a expiré. Vous devez terminer immédiatement.
+  @pragma('vm:entry-point')
+  static void backgroundFetchHeadlessTask(HeadlessTask task) async {
+    String taskId = task.taskId;
+    bool isTimeout = task.timeout;
+    if (isTimeout) {
+      print("[BackgroundFetch] Headless task timed-out: $taskId");
       BackgroundFetch.finish(taskId);
       return;
     }
 
-    print("[BackgroundFetch] Headless event received.");
+    print("[BackgroundFetch] Headless event received: $taskId");
 
+    // Assurez-vous que NotificationService est initialisé.
+    await NotificationService.initialize();
+
+    // Envoyez une notification indiquant que la tâche headless s'est exécutée.
+    await NotificationService.showNotification(
+        "Tâche headless exécutée",
+        "La tâche headless $taskId a été exécutée avec succès."
+    );
+
+    // Indiquez à Background Fetch que la tâche est terminée.
+    BackgroundFetch.finish(taskId);
+  }
 }
 
-void callbackDispatcher() {
+/*void callbackDispatcher() {
   print("Tâche en arrière-plan exécutée");
   Workmanager().executeTask((task, inputData) async {
     await Firebase.initializeApp(); // Ensure Firebase is initialized
@@ -157,7 +225,7 @@ void callbackDispatcher() {
     }
     return Future.value(true);
   });
-  }
-}
+  }*/
+
 
 

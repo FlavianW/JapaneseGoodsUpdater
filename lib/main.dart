@@ -4,16 +4,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'Accueil.dart';
+import 'package:background_fetch/background_fetch.dart';
 import 'SiteChecker.dart';
+import 'TaskManager.dart' as task_manager;
 import 'TaskManager.dart';
 import 'login.dart';
 
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  NotificationService.initialize();
-  await Firebase.initializeApp();
   await TaskManager.initBackgroundFetch();
+  task_manager.NotificationService.initialize();
+  await Firebase.initializeApp();
+  await task_manager.NotificationService.initialize();
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
   String? userId = prefs.getString('userId');
@@ -29,7 +33,6 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
