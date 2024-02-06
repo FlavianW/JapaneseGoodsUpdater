@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:workmanager/workmanager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'Accueil.dart';
@@ -81,6 +80,7 @@ class TaskManager {
         startOnBoot: true,
         enableHeadless: true,
         periodic: true,
+        requiredNetworkType: NetworkType.ANY,
       ));
     } else {
       BackgroundFetch.stop(taskName);
@@ -103,16 +103,18 @@ class TaskManager {
   /// Callback pour les événements de fetch en arrière-plan.
   // Dans TaskManager ou un gestionnaire approprié
   static void onBackgroundFetch(String taskId) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String>? artistesString = prefs.getStringList('artistes');
-    if (artistesString != null) {
-      for (var str in artistesString) {
-        Artiste artiste = Artiste.fromJson(json.decode(str));
-        // Vérifiez si la tâche doit être exécutée pour cet artiste basé sur leur configuration spécifique
-        // Par exemple, comparer le temps actuel à la dernière fois que la notification a été envoyée
-        // Si la tâche doit être exécutée, envoyez la notification
-      }
-    }
+    print("[BackgroundFetch] Événement reçu: $taskId");
+
+    // Initialiser NotificationService si ce n'est pas déjà fait
+    await NotificationService.initialize();
+
+    // Envoyer une notification
+    await NotificationService.showNotification(
+        "Tâche exécutée", // Titre de la notification
+        "La tâche $taskId a été exécutée avec succès." // Corps de la notification
+    );
+
+    // Indiquez à Background Fetch que la tâche est terminée.
     BackgroundFetch.finish(taskId);
   }
 
@@ -131,13 +133,13 @@ class TaskManager {
 
     print("[BackgroundFetch] Headless event received: $taskId");
 
-    // Assurez-vous que NotificationService est initialisé.
+    // Initialiser NotificationService si ce n'est pas déjà fait
     await NotificationService.initialize();
 
-    // Envoyez une notification indiquant que la tâche headless s'est exécutée.
+    // Envoyer une notification
     await NotificationService.showNotification(
-        "Tâche headless exécutée",
-        "La tâche headless $taskId a été exécutée avec succès."
+        "Tâche exécutée", // Titre de la notification
+        "La tâche $taskId a été exécutée avec succès." // Corps de la notification
     );
 
     // Indiquez à Background Fetch que la tâche est terminée.
