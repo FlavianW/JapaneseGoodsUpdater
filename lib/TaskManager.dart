@@ -20,9 +20,9 @@ class NotificationService {
 
   static Future<void> showNotification(String title, String body) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'your_channel_id', // Assurez-vous que cet ID est unique et correspond à un canal configuré.
-      'your_channel_name',
-      channelDescription: 'your_channel_description',
+      'high_importance_channel', // Identifiant unique du canal
+      'Alertes importantes', // Nom convivial du canal
+      channelDescription: 'Canal pour les alertes critiques et importantes.',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: false,
@@ -105,8 +105,6 @@ class TaskManager {
   static void onBackgroundFetch(String taskId) async {
     print("[BackgroundFetch] Événement reçu: $taskId");
 
-    // Initialiser NotificationService si ce n'est pas déjà fait
-    await NotificationService.initialize();
 
     // Envoyer une notification
     await NotificationService.showNotification(
@@ -134,7 +132,6 @@ class TaskManager {
     print("[BackgroundFetch] Headless event received: $taskId");
 
     // Initialiser NotificationService si ce n'est pas déjà fait
-    await NotificationService.initialize();
 
     // Envoyer une notification
     await NotificationService.showNotification(
