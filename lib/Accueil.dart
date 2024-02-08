@@ -475,7 +475,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                   await saveArtistsToPrefs();
                                   String taskName = "task_${artiste.nom}";
                                   if (value) {
-                                    TaskManager.setTaskEnabled(
+                                    setTaskEnabled(
                                       taskName,
                                       true, // isScheduled
                                       days: artiste.days,
@@ -485,7 +485,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                       artistName: artiste.nom,
                                     );
                                   } else {
-                                    TaskManager.cancelTask(taskName);
+                                    cancelTask(taskName);
                                   }
                                 },
                               ),
@@ -517,7 +517,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
 
 
   Future<void> onDeletePressed(Artiste artiste, int index) async {
-    TaskManager.cancelTask("task_${artiste.nom}");
+    cancelTask("task_${artiste.nom}");
     try {
       // Requête pour trouver le document basé sur le nom de l'artiste
       var querySnapshot = await FirebaseFirestore.instance

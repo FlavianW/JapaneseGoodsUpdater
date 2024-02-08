@@ -1,230 +1,131 @@
+import 'dart:async';
 import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:background_fetch/background_fetch.dart';
+import 'dart:ui';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'Accueil.dart';
-import 'SiteChecker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
-class NotificationService {
-  static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-  static Future<void> initialize() async {
-    var initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    var initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  }
-
-  static Future<void> showNotification(String title, String body) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'high_importance_channel', // Identifiant unique du canal
-      'Alertes importantes', // Nom convivial du canal
-      channelDescription: 'Canal pour les alertes critiques et importantes.',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-    );
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    // Générer un ID de notification unique basé sur l'horodatage actuel.
-    int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-    await flutterLocalNotificationsPlugin.show(
-      notificationId, // Utiliser un ID unique pour chaque notification.
-      title,
-      body,
-      platformChannelSpecifics,
-      payload: 'item_x', // payload optionnel pour plus d'informations.
-    );
-  }
-
+Future<void> initializeBackgroundService() async {
+  final service = FlutterBackgroundService();
+  await service.configure(
+    androidConfiguration: AndroidConfiguration(
+      onStart: onStart,
+      autoStart: true,
+      isForegroundMode: true,
+      initialNotificationTitle: 'JGT runnin in the background',
+      initialNotificationContent: '',
+    ),
+    iosConfiguration: IosConfiguration(
+      autoStart: true,
+      onForeground: onStart,
+      onBackground: onIosBackground,
+    ),
+  );
+  service.startService();
 }
 
-
-class TaskManager {
-
-  /// Initialisation de Background Fetch.
-  static Future<void> initBackgroundFetch() async {
-    // Configuration initiale de Background Fetch.
-    BackgroundFetch.configure(BackgroundFetchConfig(
-      minimumFetchInterval: 15,
-      stopOnTerminate: false,
-      startOnBoot: true,
-      enableHeadless: true,
-    ), (String taskId) async {
-      // Ceci est le callback pour les tâches régulières. Vous pouvez faire votre logique de fetch ici.
-      print("[BackgroundFetch] Event received: $taskId");
-
-      // Indique à Background Fetch que la tâche est terminée.
-      BackgroundFetch.finish(taskId);
-    }).then((int status) {
-      print('BackgroundFetch configure success: $status');
-    }).catchError((e) {
-      print('BackgroundFetch configure failed: $e');
+Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days, required int hours, required int minutes, required String userId, required String artistName}) async {
+  if (isEnabled) {
+    int intervalMinutes = days * 24 * 60 + hours * 60 + minutes;
+    print("Paramètres de la tâche: $taskName, $days, $hours, $minutes, $userId, $artistName");
+    // Convertir les paramètres en JSON pour les enregistrer
+    String taskJson = json.encode({
+      'taskName': taskName,
+      'nextRun': DateTime.now().add(Duration(days: days, hours: hours, minutes: minutes)).toIso8601String(),
+      'userId': userId,
+      'artistName': artistName,
+      'days': days,
+      'hours': hours,
+      'minutes': minutes,
     });
 
-    // Enregistrement de la tâche sans tête.
-    BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
-  }
-
-  static Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days, required int hours, required int minutes, required String userId, required String artistName}) async {
-    if (isEnabled) {
-      int intervalMinutes = days * 24 * 60 + hours * 60 + minutes;
-      BackgroundFetch.scheduleTask(TaskConfig(
-        taskId: taskName,
-        delay: intervalMinutes * 60 * 1000,
-        stopOnTerminate: false,
-        startOnBoot: true,
-        enableHeadless: true,
-        periodic: true,
-        requiredNetworkType: NetworkType.ANY,
-      ));
-    } else {
-      BackgroundFetch.stop(taskName);
-    }
-  }
-
-  static Future<void> cancelTask(String taskName) async {
-    // Avec Background Fetch, il n'y a pas de méthode directe pour annuler une tâche spécifique.
-    // Vous devrez gérer cela logiquement dans vos callbacks en vérifiant si une tâche est toujours active.
+    print("Tâche encodée en JSON: $taskJson");
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool("$taskName:isScheduled", false);
-  }
+    final tasks = prefs.getStringList('tasks') ?? [];
+    tasks.add(taskJson);
+    await prefs.setStringList('tasks', tasks);
 
-  Future<void> configureTask(String taskName, int intervalMinutes) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('$taskName:interval', intervalMinutes);
-    await prefs.setBool('$taskName:enabled', true);
-  }
-
-  /// Callback pour les événements de fetch en arrière-plan.
-  // Dans TaskManager ou un gestionnaire approprié
-  static void onBackgroundFetch(String taskId) async {
-    print("[BackgroundFetch] Événement reçu: $taskId");
-
-
-    // Envoyer une notification
-    await NotificationService.showNotification(
-        "Tâche exécutée", // Titre de la notification
-        "La tâche $taskId a été exécutée avec succès." // Corps de la notification
-    );
-
-    // Indiquez à Background Fetch que la tâche est terminée.
-    BackgroundFetch.finish(taskId);
-  }
-
-
-
-  /// Callback pour les tâches headless.
-  @pragma('vm:entry-point')
-  static void backgroundFetchHeadlessTask(HeadlessTask task) async {
-    String taskId = task.taskId;
-    bool isTimeout = task.timeout;
-    if (isTimeout) {
-      print("[BackgroundFetch] Headless task timed-out: $taskId");
-      BackgroundFetch.finish(taskId);
-      return;
-    }
-
-    print("[BackgroundFetch] Headless event received: $taskId");
-
-    // Initialiser NotificationService si ce n'est pas déjà fait
-
-    // Envoyer une notification
-    await NotificationService.showNotification(
-        "Tâche exécutée", // Titre de la notification
-        "La tâche $taskId a été exécutée avec succès." // Corps de la notification
-    );
-
-    // Indiquez à Background Fetch que la tâche est terminée.
-    BackgroundFetch.finish(taskId);
+    print("Tâche $taskName programmée pour exécution dans $intervalMinutes minutes.");
+    print(intervalMinutes);
+  } else {
+    // Logique pour annuler la tâche
+    print("Tâche $taskName annulée.");
   }
 }
 
-/*void callbackDispatcher() {
-  print("Tâche en arrière-plan exécutée");
-  Workmanager().executeTask((task, inputData) async {
-    await Firebase.initializeApp(); // Ensure Firebase is initialized
-    NotificationService.initialize();
+Future<void> cancelTask(String taskName) async {
+  final prefs = await SharedPreferences.getInstance();
+  final tasks = prefs.getStringList('tasks') ?? [];
+  final updatedTasks = tasks.where((taskJson) {
+    final task = json.decode(taskJson);
+    return task['taskName'] != taskName;
+  }).toList();
 
-    final String? userId = inputData?['userId'];
-    final String? artistName = inputData?['artistName'];
+  // Mise à jour de la liste des tâches après l'annulation
+  await prefs.setStringList('tasks', updatedTasks);
+  print("Tâche $taskName annulée.");
+}
 
-    if (userId == null || artistName == null) {
-      return Future.value(false); // End task if userId or artistName is null
-    }
 
-    // Reference to the user's alert document
-    DocumentReference alertDocRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('alerts')
-        .doc(artistName);
+@pragma('vm:entry-point')
+void onStart(ServiceInstance service) async {
+  DartPluginRegistrant.ensureInitialized();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('ic_notification');
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings); // Initialisez le plugin ici
 
-    DocumentSnapshot userPreferences = await alertDocRef.get();
+  Timer.periodic(Duration(minutes: 1), (timer) async {
+    print('Running background task');
+    final now = DateTime.now();
+    final prefs = await SharedPreferences.getInstance();
+    final tasks = prefs.getStringList('tasks') ?? [];
 
-    if (userPreferences.exists) {
-      var data = userPreferences.data() as Map<String, dynamic>?; // Explicit cast
-      if (data != null) {
-        var sitesData = data['sites'] as Map<String, dynamic>?; // Explicit cast for 'sites'
-        Map<String, int> lastCheckResults = data['siteResultsLastCheck'] != null ? Map<String, int>.from(data['siteResultsLastCheck']) : {};
-        Map<String, int> newCheckResults = {};
+    for (String taskJson in tasks) {
+      final task = json.decode(taskJson);
+      print(DateTime.parse(task['nextRun']));
+      final nextRun = DateTime.parse(task['nextRun']);
+      print("Next run = $nextRun");
+      if (now.isAfter(nextRun)) {
+        int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000); // Génère un ID unique
+        var androidDetails = AndroidNotificationDetails(
+          'channelId', 'channelName',
+          channelDescription: 'channelDescription',
+          importance: Importance.high,
+          priority: Priority.high,
+        );
+        var platformDetails = NotificationDetails(android: androidDetails);
+        await flutterLocalNotificationsPlugin.show(
+          notificationId, // Utilisez l'ID unique ici
+          'Tâche exécutée',
+          'La tâche ${task['taskName']} a été exécutée avec succès.',
+          platformDetails,
+        );
 
-        if (sitesData != null) {
-          for (var entry in sitesData.entries) {
-            String siteKey = entry.key;
-            bool shouldCheck = entry.value;
-            if (shouldCheck) {
-              int resultCount = 0;
-              switch (siteKey) {
-                case 'Booth':
-                  resultCount = await extractResultsBooth(artistName);
-                  break;
-                case 'Mandarake':
-                  resultCount = await extractResultsMandarake(artistName);
-                  break;
-                case 'Melonbooks':
-                  resultCount = await extractResultsMelonbooks(artistName);
-                  break;
-                case 'Rakuten':
-                  resultCount = await extractResultsRakuten(artistName);
-                  break;
-                case 'Surugaya':
-                  resultCount = await extractResultsSurugaya(artistName);
-                  break;
-                case 'Toranoana':
-                  resultCount = await extractResultsToranoana(artistName);
-                  break;
-              }
-
-              newCheckResults[siteKey] = resultCount;
-
-              // If new items are available (compared to last check), send a notification
-              if (resultCount > (lastCheckResults[siteKey] ?? 0)) {
-                String notificationMessage = "Des nouveaux articles sont disponibles sur $siteKey pour $artistName.";
-                await NotificationService.showNotification(
-                    0, // Notification ID
-                    "Alerte pour $artistName",
-                    notificationMessage,
-                    "Payload supplémentaire" // Used to identify the notification or pass additional data
-                );
-              }
-            }
-          }
-        }
-
-        // Update Firestore with the latest results
-        await alertDocRef.update({
-          'siteResultsLastCheck': newCheckResults,
-        });
+        print("Avant nextRunUpdate");
+        final nextRunUpdate = calculateNextRun(task['days'], task['hours'], task['minutes']);
+        print(nextRunUpdate);
+        task['nextRun'] = nextRunUpdate.toIso8601String();
+        prefs.setStringList('tasks', tasks.map((t) => json.encode(t)).toList());
       }
     }
-    return Future.value(true);
   });
-  }*/
+}
+
+
+DateTime calculateNextRun(int days, int hours, int minutes) {
+  return DateTime.now().add(Duration(days: days, hours: hours, minutes: minutes));
+}
+
+@pragma('vm:entry-point')
+bool onIosBackground(ServiceInstance service) {
+  // Votre logique de service en arrière-plan pour iOS
+  return true;
+}
+
 
 
 

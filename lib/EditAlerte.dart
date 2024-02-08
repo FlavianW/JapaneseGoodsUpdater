@@ -206,8 +206,8 @@ class _EditAlerteState extends State<EditAlerte> {
               .showSnackBar(SnackBar(content: Text("Alert updated")));
 
           if (artistController.text != artistBase) {
-            await TaskManager.cancelTask('task_'+artistBase);
-            await TaskManager.setTaskEnabled(
+            await cancelTask('task_'+artistBase);
+            await setTaskEnabled(
                 "task_" + artistController.text,
                 true, // isEnabled
                 days: days,

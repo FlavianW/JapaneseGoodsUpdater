@@ -54,6 +54,7 @@ dev_dependencies:
   firebase_storage: ^11.6.0
   image_cropper: ^5.0.1
   workmanager: ^0.5.2
+  flutter_background_service: ^5.0.5
   html: ^0.15.4
   flutter_local_notifications: ^16.3.2
   background_fetch: ^1.2.2

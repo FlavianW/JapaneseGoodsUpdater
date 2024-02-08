@@ -7,20 +7,17 @@ import 'Accueil.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'SiteChecker.dart';
 import 'TaskManager.dart' as task_manager;
-import 'TaskManager.dart';
 import 'login.dart';
 
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await TaskManager.initBackgroundFetch();
-  task_manager.NotificationService.initialize();
   await Firebase.initializeApp();
-  await task_manager.NotificationService.initialize();
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
   String? userId = prefs.getString('userId');
+  await task_manager.initializeBackgroundService();
   if (isLoggedIn && userId != null) {
     runApp(MaterialApp(
       home: Accueil(uid: userId),
@@ -30,6 +27,7 @@ void main() async {
     runApp(const MyApp());
   }
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

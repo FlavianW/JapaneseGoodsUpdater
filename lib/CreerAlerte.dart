@@ -261,7 +261,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       }));
       await prefs.setStringList('artistes', artistesString);
       String taskName = "task_${artistController.text}";
-      await TaskManager.setTaskEnabled(
+      await setTaskEnabled(
           "task_" + artistController.text,
           true, // isEnabled
           days: days,
