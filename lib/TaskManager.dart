@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:japanesegoodstool/SiteChecker.dart';
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -48,6 +48,8 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days,
 
     print("Tâche $taskName programmée pour exécution dans $intervalMinutes minutes.");
     print(intervalMinutes);
+    List<String>? savedTasks = prefs.getStringList('tasks');
+    print("Tâches enregistrées immédiatement après l'enregistrement: $savedTasks");
   } else {
     // Logique pour annuler la tâche
     print("Tâche $taskName annulée.");
@@ -76,23 +78,25 @@ void onStart(ServiceInstance service) async {
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings); // Initialisez le plugin ici
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
   Timer.periodic(Duration(minutes: 1), (timer) async {
     print('Running background task');
     final now = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
-    final tasks = prefs.getStringList('tasks') ?? [];
+    List<String>? tasks = prefs.getStringList('tasks');
+    print(tasks);
+    if (tasks == null) return;
+
+    List<String> updatedTasks = List<String>.from(tasks); // Clone the list for modification
 
     for (String taskJson in tasks) {
-      final task = json.decode(taskJson);
-      print("Tâche: $task");
-      print(task['nextRun']);
-      print(DateTime.parse(task['nextRun']));
-      final nextRun = DateTime.parse(task['nextRun']);
-      print("Next run = $nextRun");
+      final Map<String, dynamic> task = json.decode(taskJson);
+      final DateTime nextRun = DateTime.parse(task['nextRun']);
+
       if (now.isAfter(nextRun)) {
-        int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000); // Génère un ID unique
+        // Notification logic
+        int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
         var androidDetails = AndroidNotificationDetails(
           'channelId', 'channelName',
           channelDescription: 'channelDescription',
@@ -101,31 +105,39 @@ void onStart(ServiceInstance service) async {
         );
         var platformDetails = NotificationDetails(android: androidDetails);
         await flutterLocalNotificationsPlugin.show(
-          notificationId, // Utilisez l'ID unique ici
+          notificationId,
           'Tâche exécutée',
           'La tâche ${task['taskName']} a été exécutée avec succès.',
           platformDetails,
         );
 
-        print("Avant nextRunUpdate");
+        // Remove the executed task from the list
+        updatedTasks.remove(taskJson);
+
+        // Calculate the next run based on the current task's configuration
         final nextRunUpdate = calculateNextRun(
-          int.parse(task['days']?.toString() ?? '0'),
-          int.parse(task['hours']?.toString() ?? '0'),
-          int.parse(task['minutes']?.toString() ?? '15'),
+          int.tryParse(task['days'].toString()) ?? 0,
+          int.tryParse(task['hours'].toString()) ?? 0,
+          int.tryParse(task['minutes'].toString()) ?? 15,
         );
 
-        print(nextRunUpdate);
+        // Update the task with the new nextRun
         task['nextRun'] = nextRunUpdate.toIso8601String();
-        prefs.setStringList('tasks', tasks.map((t) => json.encode(t)).toList());
+
+        // Convert the updated task back to JSON and add it to the list
+        updatedTasks.add(json.encode(task));
       }
     }
+
+    // Update the stored tasks list with the modified list
+    await prefs.setStringList('tasks', updatedTasks);
   });
 }
-
 
 DateTime calculateNextRun(int days, int hours, int minutes) {
   return DateTime.now().add(Duration(days: days, hours: hours, minutes: minutes));
 }
+
 
 @pragma('vm:entry-point')
 bool onIosBackground(ServiceInstance service) {
