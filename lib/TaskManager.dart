@@ -86,6 +86,8 @@ void onStart(ServiceInstance service) async {
 
     for (String taskJson in tasks) {
       final task = json.decode(taskJson);
+      print("Tâche: $task");
+      print(task['nextRun']);
       print(DateTime.parse(task['nextRun']));
       final nextRun = DateTime.parse(task['nextRun']);
       print("Next run = $nextRun");
@@ -106,7 +108,12 @@ void onStart(ServiceInstance service) async {
         );
 
         print("Avant nextRunUpdate");
-        final nextRunUpdate = calculateNextRun(task['days'], task['hours'], task['minutes']);
+        final nextRunUpdate = calculateNextRun(
+          int.parse(task['days']?.toString() ?? '0'),
+          int.parse(task['hours']?.toString() ?? '0'),
+          int.parse(task['minutes']?.toString() ?? '15'),
+        );
+
         print(nextRunUpdate);
         task['nextRun'] = nextRunUpdate.toIso8601String();
         prefs.setStringList('tasks', tasks.map((t) => json.encode(t)).toList());
