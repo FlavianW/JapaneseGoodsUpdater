@@ -88,14 +88,14 @@ void onStart(ServiceInstance service) async {
     print(tasks);
     if (tasks == null) return;
 
-    List<String> updatedTasks = List<String>.from(tasks); // Clone the list for modification
+    List<String> newTasks = []; // Start with an empty list to collect updated tasks
 
     for (String taskJson in tasks) {
       final Map<String, dynamic> task = json.decode(taskJson);
       final DateTime nextRun = DateTime.parse(task['nextRun']);
 
       if (now.isAfter(nextRun)) {
-        // Notification logic
+        // Display the notification
         int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
         var androidDetails = AndroidNotificationDetails(
           'channelId', 'channelName',
@@ -111,8 +111,8 @@ void onStart(ServiceInstance service) async {
           platformDetails,
         );
 
-        // Remove the executed task from the list
-        updatedTasks.remove(taskJson);
+        // Cancel (remove) the executed task
+        await cancelTask(task['taskName']);
 
         // Calculate the next run based on the current task's configuration
         final nextRunUpdate = calculateNextRun(
@@ -121,16 +121,21 @@ void onStart(ServiceInstance service) async {
           int.tryParse(task['minutes'].toString()) ?? 15,
         );
 
-        // Update the task with the new nextRun
-        task['nextRun'] = nextRunUpdate.toIso8601String();
-
-        // Convert the updated task back to JSON and add it to the list
-        updatedTasks.add(json.encode(task));
+        // Recreate the task with the new nextRun using setTaskEnabled
+        await setTaskEnabled(
+          task['taskName'],
+          true,
+          days: int.tryParse(task['days'].toString()) ?? 0,
+          hours: int.tryParse(task['hours'].toString()) ?? 0,
+          minutes: int.tryParse(task['minutes'].toString()) ?? 15,
+          userId: task['userId'],
+          artistName: task['artistName'],
+        );
+      } else {
+        // If the task does not need to be executed yet, keep it as is
+        newTasks.add(taskJson);
       }
     }
-
-    // Update the stored tasks list with the modified list
-    await prefs.setStringList('tasks', updatedTasks);
   });
 }
 
