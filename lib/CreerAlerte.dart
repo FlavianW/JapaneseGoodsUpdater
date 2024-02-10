@@ -218,7 +218,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       await Future.wait(checkFutures);
 
       // Mise à jour de alertData avec les résultats des sites
-      alertData['siteResults'] = siteResults;
+      alertData['LastCheck'] = siteResults;
 
       try {
         if (_image != null) {
@@ -267,7 +267,9 @@ class _CreerAlerteState extends State<CreerAlerte> {
           hours: hours,
           minutes: minutes,
           userId: widget.uid,
-          artistName: artistController.text
+          artistName: artistController.text,
+          notifzero: sendNotifications,
+          FirstCheck: true
       );
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Alert added")));
       widget.onAlertAdded();

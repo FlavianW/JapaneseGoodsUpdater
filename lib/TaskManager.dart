@@ -7,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:japanesegoodstool/SiteChecker.dart';
 import 'package:japanesegoodstool/Accueil.dart';
+import 'package:firebase_core/firebase_core.dart';
 
+Set<String> _cancelledTasks = {};
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -28,19 +30,30 @@ Future<void> initializeBackgroundService() async {
   service.startService();
 }
 
-Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days, required int hours, required int minutes, required String userId, required String artistName}) async {
+Future<void> setTaskEnabled(String taskName, bool isEnabled,
+    {required int days,
+    required int hours,
+    required int minutes,
+    required String userId,
+    required String artistName,
+    required bool notifzero,
+    required bool FirstCheck}) async {
   if (isEnabled) {
     int intervalMinutes = days * 24 * 60 + hours * 60 + minutes;
-    print("Paramètres de la tâche: $taskName, $days, $hours, $minutes, $userId, $artistName");
+    print(
+        "Paramètres de la tâche: $taskName, $days, $hours, $minutes, $userId, $artistName");
     // Convertir les paramètres en JSON pour les enregistrer
     String taskJson = json.encode({
       'taskName': taskName,
-      'nextRun': DateTime.now().add(Duration(days: days, hours: hours, minutes: minutes)).toIso8601String(),
+      'nextRun': DateTime.now()
+          .add(Duration(days: days, hours: hours, minutes: minutes))
+          .toIso8601String(),
       'userId': userId,
       'artistName': artistName,
       'days': days,
       'hours': hours,
       'minutes': minutes,
+      'notifzero': notifzero,
     });
 
     print("Tâche encodée en JSON: $taskJson");
@@ -48,14 +61,19 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days,
     final tasks = prefs.getStringList('tasks') ?? [];
     tasks.add(taskJson);
     print(tasks);
+    _cancelledTasks.remove(taskName);
     await prefs.setStringList('tasks', tasks);
-    await addOrUpdateAlertList(userId, artistName);
 
+    if (FirstCheck) {
+      await addOrUpdateAlertList(userId, artistName);
+    }
 
-    print("Tâche $taskName programmée pour exécution dans $intervalMinutes minutes.");
+    print(
+        "Tâche $taskName programmée pour exécution dans $intervalMinutes minutes.");
     print(intervalMinutes);
     List<String>? savedTasks = prefs.getStringList('tasks');
-    print("Tâches enregistrées immédiatement après l'enregistrement: $savedTasks");
+    print(
+        "Tâches enregistrées immédiatement après l'enregistrement: $savedTasks");
   } else {
     // Logique pour annuler la tâche
     print("Tâche $taskName annulée.");
@@ -79,12 +97,14 @@ Future<void> addOrUpdateAlertList(String userId, String artistName) async {
     var documentSnapshot = querySnapshot.docs.first;
     var documentId = documentSnapshot.id; // Récupérer l'ID du document
 
-    Map<String, dynamic>? sites = documentSnapshot.data()['sites'] as Map<String, dynamic>?;
+    Map<String, dynamic>? sites =
+        documentSnapshot.data()['sites'] as Map<String, dynamic>?;
 
     // Convertir les valeurs de la map en booléens si nécessaire
     Map<String, bool> booleanSites = {};
     sites?.forEach((key, value) {
-      booleanSites[key] = value as bool; // Assurez-vous que la valeur est un booléen
+      booleanSites[key] =
+          value as bool; // Assurez-vous que la valeur est un booléen
     });
 
     // Utiliser la map `booleanSites`
@@ -96,20 +116,23 @@ Future<void> addOrUpdateAlertList(String userId, String artistName) async {
           .collection('alerts')
           .doc(documentId)
           .update({
-        'SiteFirstCheck': siteResults,
-      })
+            'SiteFirstCheck': siteResults,
+          })
           .then((_) => print("Nouvel élément ajouté à la liste avec succès"))
-          .catchError((error) => print("Erreur lors de l'ajout à la liste : $error"));
+          .catchError(
+              (error) => print("Erreur lors de l'ajout à la liste : $error"));
     });
   }
 }
 
-Future<Map<String, int>> checkAndExecuteSiteFunctions(Map<String, bool> sites, String artistName) async {
+Future<Map<String, int>> checkAndExecuteSiteFunctions(
+    Map<String, bool> sites, String artistName) async {
   Map<String, int> siteResults = {};
 
   // Pour chaque site, vérifiez s'il est actif et obtenez les résultats
   for (var site in sites.entries) {
-    if (site.value) { // Si le site est marqué comme actif
+    if (site.value) {
+      // Si le site est marqué comme actif
       int results = 0;
       switch (site.key) {
         case 'Booth':
@@ -140,19 +163,19 @@ Future<Map<String, int>> checkAndExecuteSiteFunctions(Map<String, bool> sites, S
   return siteResults; // Renvoie la map contenant les résultats
 }
 
-
 Future<void> cancelTask(String taskName) async {
   final prefs = await SharedPreferences.getInstance();
   final tasks = prefs.getStringList('tasks') ?? [];
-  print("tache canceltask");
-  print(tasks);
   final updatedTasks = tasks.where((taskJson) {
     final task = json.decode(taskJson);
-    return task['taskName'] != taskName;
+    bool isTaskNameDifferent = task['taskName'] != taskName;
+    if (!isTaskNameDifferent) {
+      // Ajoute l'identifiant de la tâche annulée
+      _cancelledTasks.add(taskName);
+    }
+    return isTaskNameDifferent;
   }).toList();
-  print("tache canceltask updated");
-  print(updatedTasks);
-  // Mise à jour de la liste des tâches après l'annulation
+
   await prefs.setStringList('tasks', updatedTasks);
   print("Tâche $taskName annulée.");
 }
@@ -166,9 +189,11 @@ void onStart(ServiceInstance service) async {
     return;
   }
   _timerInitialized = true;
-
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('ic_notification');
+  await Firebase.initializeApp();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('ic_notification');
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
@@ -182,38 +207,82 @@ void onStart(ServiceInstance service) async {
     print(tasks);
     if (tasks == null) return;
 
-    List<String> newTasks = []; // Start with an empty list to collect updated tasks
+    List<String> newTasks =
+        []; // Start with an empty list to collect updated tasks
 
     for (String taskJson in tasks) {
       final Map<String, dynamic> task = json.decode(taskJson);
       final DateTime nextRun = DateTime.parse(task['nextRun']);
 
-      if (now.isAfter(nextRun)) {
+      if (now.isAfter(nextRun) && !_cancelledTasks.contains(task['taskName'])) {
         final firestoreInstance = FirebaseFirestore.instance;
-        int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
-        var androidDetails = AndroidNotificationDetails(
-          'channelId', 'channelName',
-          channelDescription: 'channelDescription',
-          importance: Importance.high,
-          priority: Priority.high,
-        );
-        var platformDetails = NotificationDetails(android: androidDetails);
-        await flutterLocalNotificationsPlugin.show(
-          notificationId,
-          'Tâche exécutée',
-          'La tâche ${task['taskName']} a été exécutée avec succès.',
-          platformDetails,
-        );
+        int notificationId =
+            DateTime.now().millisecondsSinceEpoch.remainder(100000);
 
-        // Cancel (remove) the executed task
+        var querySnapshot = await firestoreInstance
+            .collection('users')
+            .doc(task['userId'].toString())
+            .collection('alerts')
+            .where('artist', isEqualTo: task['artistName'].toString())
+            .limit(1)
+            .get();
+
+        // Vérification si le document existe
+        if (querySnapshot.docs.isNotEmpty) {
+          var documentSnapshot = querySnapshot.docs.first;
+          var documentId = documentSnapshot.id; // Récupérer l'ID du document
+
+          Map<String, dynamic>? sites =
+              documentSnapshot.data()['sites'] as Map<String, dynamic>?;
+
+          // Convertir les valeurs de la map en booléens si nécessaire
+          Map<String, bool> booleanSites = {};
+          sites?.forEach((key, value) {
+            booleanSites[key] =
+                value as bool; // Assurez-vous que la valeur est un booléen
+          });
+
+          var currentSiteResults = documentSnapshot.data()?['SiteFirstCheck']
+                  as Map<String, dynamic>? ??
+              {};
+          var newSiteResults = await checkAndExecuteSiteFunctions(
+              booleanSites, task['artistName'].toString());
+          // Comparez et calculez le total des nouveaux articles
+          int totalNewItems = 0;
+          newSiteResults.forEach((site, newCount) {
+            int currentCount = currentSiteResults[site] ?? 0;
+            int newItems = newCount - currentCount;
+            if (newItems > 0) {
+              totalNewItems += newItems;
+            }
+          });
+
+          if (totalNewItems == 0) {
+            await firestoreInstance
+                .collection('users')
+                .doc(task['userId'].toString())
+                .collection('alerts')
+                .doc(documentId)
+                .update({'LastCheck': newSiteResults});
+
+            var androidDetails = AndroidNotificationDetails(
+              'channelId',
+              'channelName',
+              channelDescription: 'channelDescription',
+              importance: Importance.high,
+              priority: Priority.high,
+            );
+            var platformDetails = NotificationDetails(android: androidDetails);
+            await flutterLocalNotificationsPlugin.show(
+              notificationId,
+              'New items',
+              'There are $totalNewItems new items for ${task['artistName']}.',
+              platformDetails,
+            );
+          }
+        }
+
         await cancelTask(task['taskName']);
-
-        // Calculate the next run based on the current task's configuration
-        final nextRunUpdate = calculateNextRun(
-          int.tryParse(task['days'].toString()) ?? 0,
-          int.tryParse(task['hours'].toString()) ?? 0,
-          int.tryParse(task['minutes'].toString()) ?? 15,
-        );
 
         // Recreate the task with the new nextRun using setTaskEnabled
         await setTaskEnabled(
@@ -224,26 +293,26 @@ void onStart(ServiceInstance service) async {
           minutes: int.tryParse(task['minutes'].toString()) ?? 15,
           userId: task['userId'],
           artistName: task['artistName'],
+          notifzero: task['notifzero'],
+          FirstCheck: false,
         );
       } else {
         // If the task does not need to be executed yet, keep it as is
-        newTasks.add(taskJson);
+        if (!_cancelledTasks.contains(task['taskName'])) {
+          newTasks.add(taskJson);
+        }
       }
     }
   });
 }
 
 DateTime calculateNextRun(int days, int hours, int minutes) {
-  return DateTime.now().add(Duration(days: days, hours: hours, minutes: minutes));
+  return DateTime.now()
+      .add(Duration(days: days, hours: hours, minutes: minutes));
 }
-
 
 @pragma('vm:entry-point')
 bool onIosBackground(ServiceInstance service) {
   // Votre logique de service en arrière-plan pour iOS
   return true;
 }
-
-
-
-

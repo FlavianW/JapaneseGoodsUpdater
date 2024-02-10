@@ -26,7 +26,6 @@ Future<Map<String, dynamic>?> fetchUserData(String uid) async {
 
 class Artiste {
   String nom;
-  bool alertesActivees;
   String? imageUrl;
   bool isTaskActive;
   bool notifzero;
@@ -34,12 +33,12 @@ class Artiste {
   int hours;
   int minutes;
 
-  Artiste({required this.nom, this.alertesActivees = false, this.imageUrl, this.isTaskActive = false, this.notifzero = false, this.days = 0, this.hours = 0, this.minutes = 0});
+  Artiste({required this.nom, this.imageUrl, this.isTaskActive = false, this.notifzero = false, this.days = 0, this.hours = 0, this.minutes = 0});
 
   Map<String, dynamic> toJson() {
     return {
       'nom': nom,
-      'notifzero': alertesActivees,
+      'notifzero': notifzero,
       'imageUrl': imageUrl,
       'isTaskActive': isTaskActive,
       'days': days,
@@ -57,6 +56,7 @@ class Artiste {
       days: json['days'] as int? ?? 0,
       hours: json['hours'] as int? ?? 0,
       minutes: json['minutes'] as int? ?? 0,
+      notifzero: json['notifzero'] as bool? ?? false,
     );
   }
 }
@@ -106,7 +106,7 @@ class _AccueilState extends State<Accueil> {
     var loadedArtistes = userAlerts.docs.map((doc) {
       return Artiste(
         nom: doc.data()['artist'] as String,
-        alertesActivees: doc.data()['sendNotifications'] as bool,
+        notifzero: doc.data()['sendNotifications'] as bool,
         imageUrl: doc.data()['imageUrl'] as String?,
         days: doc.data()['days'] as int,
         hours: doc.data()['hours'] as int,
@@ -310,7 +310,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     List<Artiste> loadedArtistes = userAlerts.docs.map((doc) {
       return Artiste(
         nom: doc.data()['artist'] as String,
-        alertesActivees: doc.data()['sendNotifications'] as bool,
+        notifzero: doc.data()['sendNotifications'] as bool,
         imageUrl: doc.data()['imageUrl'] as String?,
         days: doc.data()['days'] as int,
         hours: doc.data()['hours'] as int,
@@ -362,7 +362,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     var loadedArtistes = userAlerts.docs.map((doc) {
       return Artiste(
         nom: doc.data()['artist'] as String,
-        alertesActivees: doc.data()['sendNotifications'] as bool,
+        notifzero: doc.data()['sendNotifications'] as bool,
         imageUrl: doc.data()['imageUrl'] as String?,
         days: doc.data()['days'] as int,
         hours: doc.data()['hours'] as int,
@@ -483,6 +483,8 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                       minutes: artiste.minutes,
                                       userId: widget.uid,
                                       artistName: artiste.nom,
+                                      notifzero: artiste.notifzero,
+                                      FirstCheck: true,
                                     );
                                   } else {
                                     cancelTask(taskName);

@@ -213,7 +213,9 @@ class _EditAlerteState extends State<EditAlerte> {
                 hours: hours,
                 minutes: minutes,
                 userId: widget.uid,
-                artistName: artistController.text
+                artistName: artistController.text,
+                notifzero: sendNotifications,
+                FirstCheck: true
             );
           }
 
