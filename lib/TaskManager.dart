@@ -4,7 +4,9 @@ import 'dart:ui';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:japanesegoodstool/SiteChecker.dart';
+import 'package:japanesegoodstool/Accueil.dart';
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -45,6 +47,8 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days,
     final tasks = prefs.getStringList('tasks') ?? [];
     tasks.add(taskJson);
     await prefs.setStringList('tasks', tasks);
+    await addOrUpdateAlertList(userId, artistName);
+
 
     print("Tâche $taskName programmée pour exécution dans $intervalMinutes minutes.");
     print(intervalMinutes);
@@ -55,6 +59,85 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days,
     print("Tâche $taskName annulée.");
   }
 }
+
+Future<void> addOrUpdateAlertList(String userId, String artistName) async {
+  final firestoreInstance = FirebaseFirestore.instance;
+
+  // Recherche du document spécifique par l'artiste
+  var querySnapshot = await firestoreInstance
+      .collection('users')
+      .doc(userId)
+      .collection('alerts')
+      .where('artist', isEqualTo: artistName)
+      .limit(1)
+      .get();
+
+  // Vérification si le document existe
+  if (querySnapshot.docs.isNotEmpty) {
+    var documentSnapshot = querySnapshot.docs.first;
+    var documentId = documentSnapshot.id; // Récupérer l'ID du document
+
+    Map<String, dynamic>? sites = documentSnapshot.data()?['sites'] as Map<String, dynamic>?;
+
+    // Convertir les valeurs de la map en booléens si nécessaire
+    Map<String, bool> booleanSites = {};
+    sites?.forEach((key, value) {
+      booleanSites[key] = value as bool; // Assurez-vous que la valeur est un booléen
+    });
+
+    // Utiliser la map `booleanSites`
+    checkAndExecuteSiteFunctions(booleanSites, artistName).then((siteResults) {
+      // Mise à jour du document avec les nouvelles données
+      firestoreInstance
+          .collection('users')
+          .doc(userId)
+          .collection('alerts')
+          .doc(documentId)
+          .update({
+        'SiteFirstCheck': siteResults,
+      })
+          .then((_) => print("Nouvel élément ajouté à la liste avec succès"))
+          .catchError((error) => print("Erreur lors de l'ajout à la liste : $error"));
+    });
+  }
+}
+
+Future<Map<String, int>> checkAndExecuteSiteFunctions(Map<String, bool> sites, String artistName) async {
+  Map<String, int> siteResults = {};
+
+  // Pour chaque site, vérifiez s'il est actif et obtenez les résultats
+  for (var site in sites.entries) {
+    if (site.value) { // Si le site est marqué comme actif
+      int results = 0;
+      switch (site.key) {
+        case 'Booth':
+          results = await extractResultsBooth(artistName);
+          break;
+        case 'Mandarake':
+          results = await extractResultsMandarake(artistName);
+          break;
+        case 'Melonbooks':
+          results = await extractResultsMelonbooks(artistName);
+          break;
+        case 'Rakuten':
+          results = await extractResultsRakuten(artistName);
+          break;
+        case 'Surugaya':
+          results = await extractResultsSurugaya(artistName);
+          break;
+        case 'Toranoana':
+          results = await extractResultsToranoana(artistName);
+          break;
+        default:
+          print('Site inconnu: ${site.key}');
+      }
+      siteResults[site.key] = results; // Ajoutez les résultats dans la map
+    }
+  }
+
+  return siteResults; // Renvoie la map contenant les résultats
+}
+
 
 Future<void> cancelTask(String taskName) async {
   final prefs = await SharedPreferences.getInstance();

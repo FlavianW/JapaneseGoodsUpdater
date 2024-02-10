@@ -192,8 +192,7 @@ class _EditAlerteState extends State<EditAlerte> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        var documentId =
-            querySnapshot.docs.first.id; // Récupérez l'ID du document
+        var documentId = querySnapshot.docs.first.id; // Récupérez l'ID du document
 
         await firestoreInstance
             .collection('users')

@@ -242,7 +242,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
       setState(() {
         artistError = null;
       });
-
       print(alertData);
       print("Alert added");
       await firestoreInstance.collection('users').doc(widget.uid).collection('alerts').add(alertData);
