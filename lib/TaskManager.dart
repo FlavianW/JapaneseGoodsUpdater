@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:japanesegoodstool/SiteChecker.dart';
 import 'package:japanesegoodstool/Accueil.dart';
 
+
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
   await service.configure(
@@ -46,6 +47,7 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled, {required int days,
     final prefs = await SharedPreferences.getInstance();
     final tasks = prefs.getStringList('tasks') ?? [];
     tasks.add(taskJson);
+    print(tasks);
     await prefs.setStringList('tasks', tasks);
     await addOrUpdateAlertList(userId, artistName);
 
@@ -77,7 +79,7 @@ Future<void> addOrUpdateAlertList(String userId, String artistName) async {
     var documentSnapshot = querySnapshot.docs.first;
     var documentId = documentSnapshot.id; // Récupérer l'ID du document
 
-    Map<String, dynamic>? sites = documentSnapshot.data()?['sites'] as Map<String, dynamic>?;
+    Map<String, dynamic>? sites = documentSnapshot.data()['sites'] as Map<String, dynamic>?;
 
     // Convertir les valeurs de la map en booléens si nécessaire
     Map<String, bool> booleanSites = {};
@@ -142,20 +144,29 @@ Future<Map<String, int>> checkAndExecuteSiteFunctions(Map<String, bool> sites, S
 Future<void> cancelTask(String taskName) async {
   final prefs = await SharedPreferences.getInstance();
   final tasks = prefs.getStringList('tasks') ?? [];
+  print("tache canceltask");
+  print(tasks);
   final updatedTasks = tasks.where((taskJson) {
     final task = json.decode(taskJson);
     return task['taskName'] != taskName;
   }).toList();
-
+  print("tache canceltask updated");
+  print(updatedTasks);
   // Mise à jour de la liste des tâches après l'annulation
   await prefs.setStringList('tasks', updatedTasks);
   print("Tâche $taskName annulée.");
 }
 
+bool _timerInitialized = false;
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  DartPluginRegistrant.ensureInitialized();
+  if (_timerInitialized) {
+    print('Timer is already initialized.');
+    return;
+  }
+  _timerInitialized = true;
+
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('ic_notification');
   final InitializationSettings initializationSettings = InitializationSettings(
@@ -178,7 +189,7 @@ void onStart(ServiceInstance service) async {
       final DateTime nextRun = DateTime.parse(task['nextRun']);
 
       if (now.isAfter(nextRun)) {
-        // Display the notification
+        final firestoreInstance = FirebaseFirestore.instance;
         int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
         var androidDetails = AndroidNotificationDetails(
           'channelId', 'channelName',

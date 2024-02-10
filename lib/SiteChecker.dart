@@ -38,7 +38,7 @@ Future<int> extractResultsBooth(String artistName) async {
         return 0; // Retourne 0 si le tag n'est pas trouvé
       }
     } else {
-      print('Failed to load webpage');
+      print('Failed to load webpage Booth');
       return 0; // En cas d'échec du chargement de la page
     }
   } catch (e) {
@@ -76,7 +76,7 @@ Future<int> extractResultsMandarake(String artistName) async {
         return 0;
       }
     } else {
-      print('Failed to load webpage');
+      print('Failed to load webpage Mandarake');
       return 0;
     }
   } catch (e) {
@@ -115,7 +115,7 @@ Future<int> extractResultsMelonbooks(String artistName) async {
         return 0;
       }
     } else {
-      print('Failed to load webpage');
+      print('Failed to load webpage Melonbooks');
       return 0;
     }
   } catch (e) {
@@ -161,7 +161,7 @@ Future<int> extractResultsRakuten(String searchQuery) async {
         return 0; // Retourne 0 si l'élément n'est pas trouvé
       }
     } else {
-      print('Failed to load webpage');
+      print('Failed to load webpage Rakuten');
       return 0; // Retourne 0 en cas d'échec de la requête
     }
   } catch (e) {
@@ -205,7 +205,7 @@ Future<int> extractResultsSurugaya(String searchQuery) async {
         return 0; // Retourne 0 si l'élément n'est pas trouvé
       }
     } else {
-      print('Failed to load webpage');
+      print('Failed to load webpage Surugaya');
       return 0; // Retourne 0 en cas d'échec de la requête
     }
   } catch (e) {
@@ -220,7 +220,7 @@ Future<int> extractResultsToranoana(String searchQuery) async {
     String encodedSearchQuery = Uri.encodeComponent(searchQuery);
     // Construit l'URL de recherche Toranoana avec le terme de recherche encodé
     String url = 'https://ecs.toranoana.jp/tora/ec/app/catalog/list/?searchWord=$encodedSearchQuery&searchBackorderFlg=1&searchUsedItemFlg=1&searchDisplay=0&detailSearch=true';
-
+    print(url);
     // Envoie la requête HTTP et attend la réponse
     var response = await http.get(Uri.parse(url));
 
@@ -229,25 +229,25 @@ Future<int> extractResultsToranoana(String searchQuery) async {
       // Parse le contenu HTML pour créer un document DOM
       var document = parser.parse(htmlContent);
 
-      // Utilise le sélecteur CSS pour trouver la balise meta avec le nom "description"
-      var metaDescription = document.querySelector('meta[name="description"]');
+      // Utilise le sélecteur CSS pour trouver l'élément contenant le nombre de produits
+      // (Adaptez ce sélecteur au besoin en fonction de la structure exacte de la page)
+      var productCountElement = document.querySelector('#search-result-container > nav > div.ui-tabs-01 > div > a:nth-child(1) > span > span');
 
-      if (metaDescription != null) {
-        // Extrait le contenu de l'attribut "content"
-        String content = metaDescription.attributes['content'] ?? '';
+      if (productCountElement != null) {
+        // Extrait le texte, qui devrait être sous la forme "X件" où X est le nombre de produits
+        String productCountText = productCountElement.text.trim();
 
-        // Recherche du nombre à l'aide d'une expression régulière
-        final RegExp regExp = RegExp(r'\d+');
-        final match = regExp.firstMatch(content);
+        // Utilise une expression régulière pour extraire le nombre
+        RegExp regExp = RegExp(r'\d+');
+        var match = regExp.firstMatch(productCountText);
 
         if (match != null) {
-          // Conversion du nombre extrait en entier
-          return int.parse(match.group(0)!);
+          return int.parse(match.group(0)!); // Convertit le nombre extrait en entier
         }
       }
-      return 0; // Retourne 0 si l'élément ou le nombre n'est pas trouvé
+      return 0; // Retourne 0 si l'élément contenant le nombre de produits n'est pas trouvé
     } else {
-      print('Failed to load webpage');
+      print('Failed to load webpage Toranoana');
       return 0; // Retourne 0 en cas d'échec de la requête
     }
   } catch (e) {
@@ -255,5 +255,3 @@ Future<int> extractResultsToranoana(String searchQuery) async {
     return 0; // Retourne 0 en cas d'erreur lors du parsing ou de la requête
   }
 }
-
-
