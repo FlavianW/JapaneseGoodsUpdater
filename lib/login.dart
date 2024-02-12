@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:japanesegoodstool/RegisterPage.dart';
 import 'package:japanesegoodstool/Accueil.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -25,8 +24,6 @@ void main() async {
     runApp(const MyApp());
   }
 }
-
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -57,7 +54,8 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> signIn() async {
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text,
         password: passwordController.text,
       );
@@ -65,75 +63,72 @@ class _LoginPageState extends State<LoginPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       if (stayLoggedIn && userCredential.user != null) {
         await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('userId', userCredential.user!.uid); // Keep UID in shared preferences
+        await prefs.setString('userId',
+            userCredential.user!.uid); // Keep UID in shared preferences
       }
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => Accueil(uid: userCredential.user!.uid)),
+        MaterialPageRoute(
+            builder: (context) => Accueil(uid: userCredential.user!.uid)),
       );
-    } on FirebaseAuthException {
-    }
+    } on FirebaseAuthException {}
   }
-
-
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
-    home: Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            TextFormField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            TextFormField(
-              controller: passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            Row(
+        home: Scaffold(
+          appBar: AppBar(
+            title: const Text('Login'),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Checkbox(
-                  value: stayLoggedIn,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value != null) {
-                        stayLoggedIn = value;
-                      }
-                    });
-                  },
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
                 ),
-                const Text('Rester connecté'),
+                TextFormField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+                Row(
+                  children: <Widget>[
+                    Checkbox(
+                      value: stayLoggedIn,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value != null) {
+                            stayLoggedIn = value;
+                          }
+                        });
+                      },
+                    ),
+                    const Text('Stay connected'),
+                  ],
+                ),
+                ElevatedButton(
+                  onPressed: signIn,
+                  child: const Text('Log In'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (context) => const RegisterPage()),
+                    );
+                  },
+                  child: const Text('Create an account'),
+                ),
               ],
             ),
-            ElevatedButton(
-              onPressed: signIn,
-              child: const Text('Log In'),
-            ),
-
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const RegisterPage()),
-                );
-              },
-              child: const Text('Créer un compte'),
-            ),
-          ],
-        ),
-      ),
-    )
-    );
+          ),
+        ));
   }
 }
-

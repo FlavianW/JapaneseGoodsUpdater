@@ -92,7 +92,6 @@ class _AccueilState extends State<Accueil> {
   @override
   void initState() {
     super.initState();
-    print("InitState dans _AccueilState");
     loadAlerts();
   }
 
@@ -102,8 +101,6 @@ class _AccueilState extends State<Accueil> {
         .doc(widget.uid)
         .collection('alerts')
         .get();
-
-    print("Alertes récupérées depuis Firestore: ${userAlerts.docs.length}");
 
     var loadedArtistes = userAlerts.docs.map((doc) {
       return Artiste(
@@ -133,7 +130,6 @@ class _AccueilState extends State<Accueil> {
     if (mounted) {
       setState(() {
         listeArtistes = loadedArtistes;
-        print(loadedArtistes);
       });
     }
   }
@@ -142,9 +138,7 @@ class _AccueilState extends State<Accueil> {
     // Disconnect from Firebase Auth
     await FirebaseAuth.instance.signOut();
 
-    BackgroundFetch.stop().then((int status) {
-      print("Background Fetch stopped with status: $status");
-    });
+    BackgroundFetch.stop().then((int status) {});
 
     // Get Shared Preferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -230,15 +224,15 @@ class _AccueilState extends State<Accueil> {
             ),
             ListTile(
               leading: const Icon(Icons.home),
-              title: const Text('Accueil'),
+              title: const Text('HomePage'),
               onTap: () {
                 Navigator.pop(context);
               },
             ),
             ListTile(
               leading: const Icon(Icons.exit_to_app, color: Colors.red),
-              title: const Text('Déconnexion',
-                  style: TextStyle(color: Colors.red)),
+              title:
+                  const Text('Disconnect', style: TextStyle(color: Colors.red)),
               onTap: () => signOut(context),
             ),
           ],
@@ -269,7 +263,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     List<String> artistesString =
         listeArtistes.map((artiste) => json.encode(artiste.toJson())).toList();
     await prefs.setStringList('artistes', artistesString);
-    print("SharedPreferences après la mise à jour: $artistesString");
   }
 
   Future<void> loadArtistsFromPrefs() async {
@@ -539,9 +532,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
             .doc(querySnapshot.docs.first.id)
             .delete();
       }
-    } catch (e) {
-      print("Erreur lors de la suppression de l'artiste: $e");
-    }
+    } catch (e) {}
 
     // Delete the picture from google storage
     if (artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty) {

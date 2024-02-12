@@ -52,8 +52,6 @@ class _EditAlerteState extends State<EditAlerte> {
   }
 
   void loadAlertData() async {
-    print(widget.uid);
-    print(widget.alerteId);
     try {
       var existingAlerts = await FirebaseFirestore.instance
           .collection('users')
@@ -65,7 +63,6 @@ class _EditAlerteState extends State<EditAlerte> {
 
       if (existingAlerts.docs.isNotEmpty) {
         var alertData = existingAlerts.docs[0].data() as Map<String, dynamic>;
-        print(alertData);
         setState(() {
           artistBase = alertData['artist'] ?? '';
           artistController.text = alertData['artist'] ?? '';
@@ -87,9 +84,7 @@ class _EditAlerteState extends State<EditAlerte> {
           }
         });
       }
-    } catch (e) {
-      print("Error loading alert data: $e");
-    }
+    } catch (e) {}
   }
 
   bool isDurationValid(int days, int hours, int minutes) {
@@ -118,13 +113,10 @@ class _EditAlerteState extends State<EditAlerte> {
     );
   }
 
-
   void updateAlert() async {
     if (!isDurationValid(days, hours, minutes)) {
-      showErrorDialog(
-          "Invalid Duration",
-          "Length between checks must be at least 15 minutes."
-      );
+      showErrorDialog("Invalid Duration",
+          "Length between checks must be at least 15 minutes.");
       return;
     }
     try {
@@ -152,7 +144,8 @@ class _EditAlerteState extends State<EditAlerte> {
           throw Exception('Only PNG and JPG files are allowed');
         }
 
-        String fileName = 'alerts/${widget.uid}/${DateTime.now().millisecondsSinceEpoch}$extension';
+        String fileName =
+            'alerts/${widget.uid}/${DateTime.now().millisecondsSinceEpoch}$extension';
         Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
         UploadTask uploadTask = storageRef.putFile(image);
         await uploadTask;
@@ -163,9 +156,7 @@ class _EditAlerteState extends State<EditAlerte> {
         try {
           Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
           await storageRef.delete();
-        } catch (e) {
-          print("Error deleting image: $e");
-        }
+        } catch (e) {}
       }
 
       if (_image != null && imageBase != '') {
@@ -204,29 +195,25 @@ class _EditAlerteState extends State<EditAlerte> {
               .showSnackBar(SnackBar(content: Text("Alert updated")));
 
           if (artistController.text != artistBase) {
-            await cancelTask('task_'+artistBase);
-            await setTaskEnabled(
-                "task_" + artistController.text,
-                true,
+            await cancelTask('task_' + artistBase);
+            await setTaskEnabled("task_" + artistController.text, true,
                 days: days,
                 hours: hours,
                 minutes: minutes,
                 userId: widget.uid,
                 artistName: artistController.text,
                 notifzero: sendNotifications,
-                FirstCheck: true
-            );
+                FirstCheck: true);
           }
-
 
           final prefs = await SharedPreferences.getInstance();
           List<String>? artistesString = prefs.getStringList('artistes');
-          print(prefs.getStringList('artistes'));
           if (artistesString != null) {
             List<String> updatedArtistesString = [];
             for (var str in artistesString) {
               var artiste = json.decode(str);
-              if (artiste['nom'] == artistBase) { // Keep old name
+              if (artiste['nom'] == artistBase) {
+                // Keep old name
                 artiste['nom'] = artistController.text; // New name
                 artiste['hours'] = hours;
                 artiste['minutes'] = minutes;
@@ -242,15 +229,9 @@ class _EditAlerteState extends State<EditAlerte> {
           widget.onAlertAdded();
 
           Navigator.pop(context);
-
-
-        }).catchError((error) {
-          print("Error updating alert: $error");
-        });
+        }).catchError((error) {});
       }
-    } catch (e) {
-      print("Error updating alert: $e");
-    }
+    } catch (e) {}
   }
 
   Future<void> pickImage() async {
@@ -281,10 +262,10 @@ class _EditAlerteState extends State<EditAlerte> {
       );
 
       if (croppedFile != null) {
-        print("Selected image path: ${croppedFile.path}");
         setState(() {
           _image = File(croppedFile.path);
-          imageUrlWidget = null; // Reset imageUrlWidget to remove the previous image
+          imageUrlWidget =
+              null; // Reset imageUrlWidget to remove the previous image
         });
       }
     }
@@ -293,6 +274,7 @@ class _EditAlerteState extends State<EditAlerte> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
           title: const Text("Edit Alert"),
@@ -353,6 +335,13 @@ class _EditAlerteState extends State<EditAlerte> {
                     sendNotifications = newValue ?? false;
                   });
                 },
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  "Sites to check",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               _buildSiteCheckbox("Melonbooks", Melonbooks,
                   (value) => setState(() => Melonbooks = value!)),

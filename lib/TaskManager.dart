@@ -16,8 +16,9 @@ Future<void> initializeBackgroundService() async {
       onStart: onStart,
       autoStart: true,
       isForegroundMode: true,
-      initialNotificationTitle: 'JGT runnin in the background',
+      initialNotificationTitle: 'JGT running in the background',
       initialNotificationContent: '',
+
     ),
     iosConfiguration: IosConfiguration(
       autoStart: true,
@@ -36,9 +37,6 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled,
     required bool notifzero,
     required bool FirstCheck}) async {
   if (isEnabled) {
-    int intervalMinutes = days * 24 * 60 + hours * 60 + minutes;
-    print(
-        "Paramètres de la tâche: $taskName, $days, $hours, $minutes, $userId, $artistName");
     String taskJson = json.encode({
       'taskName': taskName,
       'nextRun': DateTime.now()
@@ -52,11 +50,9 @@ Future<void> setTaskEnabled(String taskName, bool isEnabled,
       'notifzero': notifzero,
     });
 
-    print("Tâche encodée en JSON: $taskJson");
     final prefs = await SharedPreferences.getInstance();
     final tasks = prefs.getStringList('tasks') ?? [];
     tasks.add(taskJson);
-    print(tasks);
     _cancelledTasks.remove(taskName);
     await prefs.setStringList('tasks', tasks);
 
@@ -87,8 +83,7 @@ Future<void> addOrUpdateAlertList(String userId, String artistName) async {
 
     Map<String, bool> booleanSites = {};
     sites?.forEach((key, value) {
-      booleanSites[key] =
-          value as bool;
+      booleanSites[key] = value as bool;
     });
 
     checkAndExecuteSiteFunctions(booleanSites, artistName).then((siteResults) {
@@ -135,7 +130,6 @@ Future<Map<String, int>> checkAndExecuteSiteFunctions(
           results = await extractResultsToranoana(artistName);
           break;
         default:
-          print('Site inconnu: ${site.key}');
       }
       siteResults[site.key] = results;
     }
@@ -157,7 +151,6 @@ Future<void> cancelTask(String taskName) async {
   }).toList();
 
   await prefs.setStringList('tasks', updatedTasks);
-  print("Tâche $taskName annulée.");
 }
 
 bool _timerInitialized = false;
@@ -165,7 +158,6 @@ bool _timerInitialized = false;
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   if (_timerInitialized) {
-    print('Timer is already initialized.');
     return;
   }
   _timerInitialized = true;
@@ -179,22 +171,17 @@ void onStart(ServiceInstance service) async {
   );
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-
-
   // By far the hardest method in the whole app, the problem is with flutter background fetch
   // When the background task is finished I delete it and create the same one but with
   // nextRun updated, I couldn't change only nextRun on the fly, this might lead to some
   // "unfixable bug??"
   Timer.periodic(Duration(minutes: 1), (timer) async {
-    print('Running background task');
     final now = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
     List<String>? tasks = prefs.getStringList('tasks');
-    print(tasks);
     if (tasks == null) return;
 
-    List<String> newTasks =
-        [];
+    List<String> newTasks = [];
 
     for (String taskJson in tasks) {
       final Map<String, dynamic> task = json.decode(taskJson);
@@ -222,8 +209,7 @@ void onStart(ServiceInstance service) async {
 
           Map<String, bool> booleanSites = {};
           sites?.forEach((key, value) {
-            booleanSites[key] =
-                value as bool;
+            booleanSites[key] = value as bool;
           });
 
           var currentSiteResults = documentSnapshot.data()?['SiteFirstCheck']

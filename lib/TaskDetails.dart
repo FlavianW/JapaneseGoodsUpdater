@@ -8,7 +8,8 @@ class TaskDetails extends StatefulWidget {
   final String userId;
   final String artiste;
 
-  const TaskDetails({Key? key, required this.userId, required this.artiste}) : super(key: key);
+  const TaskDetails({Key? key, required this.userId, required this.artiste})
+      : super(key: key);
 
   @override
   _TaskDetailsState createState() => _TaskDetailsState();
@@ -39,8 +40,10 @@ class _TaskDetailsState extends State<TaskDetails> {
 
     if (querySnapshot.docs.isNotEmpty) {
       this.documentSnapshot = querySnapshot.docs.first;
+      Map<String, dynamic>? data = this.documentSnapshot!.data() as Map<String, dynamic>?;
+
       setState(() {
-        lastCheck = this.documentSnapshot!.get('LastCheck');
+        lastCheck = data?['LastCheck'] ?? data?['SiteFirstCheck'];
         siteFirstCheck = this.documentSnapshot!.get('SiteFirstCheck');
       });
       calculateDifferences();
@@ -49,21 +52,21 @@ class _TaskDetailsState extends State<TaskDetails> {
 
   Future<void> resetButton() async {
     if (lastCheck != null && documentSnapshot != null) {
-        FirebaseFirestore firestoreInstance = FirebaseFirestore.instance;
+      FirebaseFirestore firestoreInstance = FirebaseFirestore.instance;
 
-        firestoreInstance
-            .collection('users')
-            .doc(widget.userId)
-            .collection('alerts')
-            .doc(documentSnapshot?.id)
-            .update({
-          'SiteFirstCheck': lastCheck,
-        });
+      firestoreInstance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('alerts')
+          .doc(documentSnapshot?.id)
+          .update({
+        'SiteFirstCheck': lastCheck,
+      });
 
-        setState(() {
-          differences = differences.map((key, value) => MapEntry(key, 0));
-        });
-      }
+      setState(() {
+        differences = differences.map((key, value) => MapEntry(key, 0));
+      });
+    }
   }
 
   void calculateDifferences() {
@@ -74,8 +77,8 @@ class _TaskDetailsState extends State<TaskDetails> {
     });
   }
 
-  Future<Map<String, int>> checkAndExecuteSiteFunctions(Map<String, bool> sites,
-      String artistName) async {
+  Future<Map<String, int>> checkAndExecuteSiteFunctions(
+      Map<String, bool> sites, String artistName) async {
     Map<String, int> siteResults = {};
 
     for (var site in sites.entries) {
@@ -101,7 +104,6 @@ class _TaskDetailsState extends State<TaskDetails> {
             results = await extractResultsToranoana(artistName);
             break;
           default:
-            print('Site inconnu: ${site.key}');
         }
         siteResults[site.key] = results;
       }
@@ -109,7 +111,6 @@ class _TaskDetailsState extends State<TaskDetails> {
 
     return siteResults;
   }
-
 
   Widget buildSiteLink(String siteName, String baseUrl) {
     return ListTile(
@@ -147,7 +148,6 @@ class _TaskDetailsState extends State<TaskDetails> {
                         ),
                       ),
                       SizedBox(width: 4),
-
                       Icon(Icons.open_in_new, color: Colors.blue),
                     ],
                   ),
@@ -167,7 +167,6 @@ class _TaskDetailsState extends State<TaskDetails> {
       ),
     );
   }
-
 
   String getBaseUrl(String siteName, String artistName) {
     String encodedArtistName = Uri.encodeComponent(artistName);
@@ -196,14 +195,12 @@ class _TaskDetailsState extends State<TaskDetails> {
 
   Future<void> launchURL(String baseUrl, String artistName) async {
     final String finalUrl = getBaseUrl(baseUrl, artistName);
-    print(finalUrl);
     final Uri url = Uri.parse(finalUrl);
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $finalUrl'))
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Could not launch $finalUrl')));
     }
   }
 
@@ -222,38 +219,38 @@ class _TaskDetailsState extends State<TaskDetails> {
       body: lastCheck == null || siteFirstCheck == null
           ? const Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(50.0),
-            child: Text(
-              "Recap",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(50.0),
+                  child: Text(
+                    "Recap",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    children: differences.keys.map((siteName) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: buildDifferenceWidget(siteName),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                // Reset Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: ElevatedButton(
+                    onPressed: () => resetButton(),
+                    child: Text('Reset'),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: ListView(
-              children: differences.keys.map((siteName) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: buildDifferenceWidget(siteName),
-                );
-              }).toList(),
-            ),
-          ),
-          // Reset Button
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: ElevatedButton(
-              onPressed: () => resetButton(),
-              child: Text('Reset'),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -5,8 +5,6 @@ import 'Accueil.dart';
 import 'TaskManager.dart' as task_manager;
 import 'login.dart';
 
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -24,9 +22,9 @@ void main() async {
   }
 }
 
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
@@ -35,5 +33,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-
