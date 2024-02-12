@@ -174,7 +174,7 @@ class _TaskDetailsState extends State<TaskDetails> {
     switch (siteName) {
       case 'Booth':
         return 'https://booth.pm/en/search/$encodedArtistName' +
-            '?in_stock=true';
+            '?in_stock=true&sort=new';
       case 'Mandarake':
         return 'https://order.mandarake.co.jp/order/listPage/list?soldOut=1&keyword=$encodedArtistName' +
             '&lang=en';
@@ -182,10 +182,10 @@ class _TaskDetailsState extends State<TaskDetails> {
         return 'https://www.melonbooks.co.jp/search/search.php?mode=search&search_disp=&category_id=0&text_type=&name=$encodedArtistName';
       case 'Rakuten':
         return 'https://search.rakuten.co.jp/search/mall/$encodedArtistName' +
-            '/?sf=1';
+            '/?sf=1&s=4';
       case 'Surugaya':
         return 'https://www.suruga-ya.com/en/products?keyword=$encodedArtistName' +
-            '&btn_search=&in_stock=f';
+            '&btn_search=&in_stock=f&sort=updated_date_desc';
       case 'Toranoana':
         return 'https://ecs.toranoana.jp/tora/ec/app/catalog/list/?searchWord=$encodedArtistName' +
             '&searchBackorderFlg=1&searchUsedItemFlg=1&searchDisplay=0&detailSearch=true';
