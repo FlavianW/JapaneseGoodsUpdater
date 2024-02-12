@@ -58,6 +58,7 @@ dev_dependencies:
   html: ^0.15.4
   flutter_local_notifications: ^16.3.2
   background_fetch: ^1.2.2
+  url_launcher: ^6.2.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

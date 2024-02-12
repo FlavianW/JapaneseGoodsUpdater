@@ -7,22 +7,21 @@ import 'package:japanesegoodstool/EditAlerte.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'TaskDetails.dart';
 import 'TaskManager.dart';
 import 'login.dart';
 import 'CreerAlerte.dart';
 import 'dart:convert';
 
-
-
 Future<Map<String, dynamic>?> fetchUserData(String uid) async {
   try {
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    DocumentSnapshot userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
     return userDoc.data() as Map<String, dynamic>?;
   } catch (e) {
     return null;
   }
 }
-
 
 class Artiste {
   String nom;
@@ -33,7 +32,14 @@ class Artiste {
   int hours;
   int minutes;
 
-  Artiste({required this.nom, this.imageUrl, this.isTaskActive = false, this.notifzero = false, this.days = 0, this.hours = 0, this.minutes = 0});
+  Artiste(
+      {required this.nom,
+      this.imageUrl,
+      this.isTaskActive = false,
+      this.notifzero = false,
+      this.days = 0,
+      this.hours = 0,
+      this.minutes = 0});
 
   Map<String, dynamic> toJson() {
     return {
@@ -46,7 +52,6 @@ class Artiste {
       'minutes': minutes,
     };
   }
-
 
   factory Artiste.fromJson(Map<String, dynamic> json) {
     return Artiste(
@@ -61,8 +66,6 @@ class Artiste {
   }
 }
 
-
-
 class Accueil extends StatefulWidget {
   final String uid;
 
@@ -70,7 +73,6 @@ class Accueil extends StatefulWidget {
 
   @override
   _AccueilState createState() => _AccueilState();
-
 }
 
 class _AccueilState extends State<Accueil> {
@@ -92,11 +94,11 @@ class _AccueilState extends State<Accueil> {
     super.initState();
     print("InitState dans _AccueilState");
     loadAlerts();
-
   }
 
   Future<void> loadAlerts() async {
-    var userAlerts = await FirebaseFirestore.instance.collection('users')
+    var userAlerts = await FirebaseFirestore.instance
+        .collection('users')
         .doc(widget.uid)
         .collection('alerts')
         .get();
@@ -132,31 +134,28 @@ class _AccueilState extends State<Accueil> {
       setState(() {
         listeArtistes = loadedArtistes;
         print(loadedArtistes);
-
       });
     }
   }
 
   Future<void> signOut(BuildContext context) async {
-    // Se déconnecter de FirebaseAuth
+    // Disconnect from Firebase Auth
     await FirebaseAuth.instance.signOut();
 
     BackgroundFetch.stop().then((int status) {
       print("Background Fetch stopped with status: $status");
     });
 
-
-    // Obtenir l'instance de SharedPreferences
+    // Get Shared Preferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    // Effacer toutes les données dans SharedPreferences
+    // Delete all shared Preferences
     await prefs.clear();
 
-    // Naviguer vers la page de connexion
+    // Go to login page
     Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const LoginPage()));
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +169,8 @@ class _AccueilState extends State<Accueil> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return const Center(child: Text("Erreur de chargement des données"));
+            return const Center(
+                child: Text("Erreur de chargement des données"));
           } else if (snapshot.hasData) {
             String nickname = snapshot.data?['nickname'] ?? 'Utilisateur';
             return Column(
@@ -180,33 +180,37 @@ class _AccueilState extends State<Accueil> {
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
                     'Hello $nickname',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
                 Expanded(
                   child: listeArtistes.isEmpty
-                      ? Center( // Centre si la liste est vide
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Create your first alert with the button',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold, // Ajoutez cette ligne pour le gras
-                            fontSize: 16, // Ajustez la taille de la police si nécessaire
+                      ? Center(
+                          // Center if list is empty
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Create your first alert with the button',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () {
+                                  navigateToCreerAlerte();
+                                },
+                                child: const Text('Create an alert'),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            navigateToCreerAlerte();
-                          },
-                          child: const Text('Create an alert'),
-                        ),
-                      ],
-                    ),
-                  )
-                      : ListeArtistesWidget(uid: widget.uid, listeArtistes: listeArtistes), // Affiche la liste des artistes
+                        )
+                      : ListeArtistesWidget(
+                          uid: widget.uid,
+                          listeArtistes: listeArtistes), // Load Artist list
                 ),
               ],
             );
@@ -217,14 +221,12 @@ class _AccueilState extends State<Accueil> {
       ),
       drawer: Drawer(
         child: ListView(
-          padding: EdgeInsets.zero, // Important pour s'assurer que le DrawerHeader n'a pas de padding supplémentaire
+          padding: EdgeInsets.zero,
           children: <Widget>[
             const DrawerHeader(
               decoration: BoxDecoration(color: Colors.blue),
-              child: Text(
-                  'Menu',
-                  style: TextStyle(color: Colors.white, fontSize: 24)
-              ),
+              child: Text('Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
               leading: const Icon(Icons.home),
@@ -234,17 +236,9 @@ class _AccueilState extends State<Accueil> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Paramètres'),
-              onTap: () {
-                // Naviguer vers la page des paramètres
-              },
-            ),
-            // ... Autres éléments du menu, si nécessaire
-            // Placez le ListTile de déconnexion en bas de la liste
-            ListTile(
               leading: const Icon(Icons.exit_to_app, color: Colors.red),
-              title: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
+              title: const Text('Déconnexion',
+                  style: TextStyle(color: Colors.red)),
               onTap: () => signOut(context),
             ),
           ],
@@ -254,11 +248,13 @@ class _AccueilState extends State<Accueil> {
   }
 }
 
-
 class ListeArtistesWidget extends StatefulWidget {
   final String uid;
-  final List<Artiste> listeArtistes; // Ajoutez ce paramètre
-  const ListeArtistesWidget({Key? key, required this.uid, required this.listeArtistes}) : super(key: key);
+  final List<Artiste> listeArtistes;
+
+  const ListeArtistesWidget(
+      {Key? key, required this.uid, required this.listeArtistes})
+      : super(key: key);
 
   @override
   _ListeArtistesWidgetState createState() => _ListeArtistesWidgetState();
@@ -266,12 +262,12 @@ class ListeArtistesWidget extends StatefulWidget {
 
 class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   List<Artiste> listeArtistes = [];
-  bool isLoading = true; // Ajout d'un indicateur de chargement
+  bool isLoading = true;
 
   Future<void> saveArtistsToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> artistesString = listeArtistes.map((artiste) =>
-        json.encode(artiste.toJson())).toList();
+    List<String> artistesString =
+        listeArtistes.map((artiste) => json.encode(artiste.toJson())).toList();
     await prefs.setStringList('artistes', artistesString);
     print("SharedPreferences après la mise à jour: $artistesString");
   }
@@ -280,8 +276,9 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     final prefs = await SharedPreferences.getInstance();
     List<String>? artistesString = prefs.getStringList('artistes');
     if (artistesString != null) {
-      var tempArtistes = artistesString.map((str) =>
-          Artiste.fromJson(json.decode(str))).toList();
+      var tempArtistes = artistesString
+          .map((str) => Artiste.fromJson(json.decode(str)))
+          .toList();
       setState(() {
         listeArtistes = tempArtistes;
         isLoading = false;
@@ -293,7 +290,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     }
   }
 
-
   void navigateToCreerAlerte() {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (context) =>
@@ -302,7 +298,8 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
   }
 
   Future<void> reloadAlerts() async {
-    var userAlerts = await FirebaseFirestore.instance.collection('users')
+    var userAlerts = await FirebaseFirestore.instance
+        .collection('users')
         .doc(widget.uid)
         .collection('alerts')
         .get();
@@ -318,7 +315,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       );
     }).toList();
 
-    // Chargement de l'état isTaskActive depuis SharedPreferences
+    // Loading isTaskActive in SP
     final prefs = await SharedPreferences.getInstance();
     List<String>? artistesString = prefs.getStringList('artistes');
     Map<String, bool> isTaskActiveMap = {};
@@ -329,7 +326,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       }
     }
 
-    // Appliquer l'état isTaskActive aux artistes chargés depuis Firestore
+    // Add isTaskActive to Artists in SP
     for (var artiste in loadedArtistes) {
       var nomArtiste = artiste.nom;
       if (isTaskActiveMap.containsKey(nomArtiste)) {
@@ -344,17 +341,16 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
-    reloadAlerts(); // Chargez les artistes et mettez à jour leur état
+    reloadAlerts();
     isLoading = false;
   }
 
-
   Future<void> loadAlerts() async {
-    var userAlerts = await FirebaseFirestore.instance.collection('users')
+    var userAlerts = await FirebaseFirestore.instance
+        .collection('users')
         .doc(widget.uid)
         .collection('alerts')
         .get();
@@ -370,7 +366,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       );
     }).toList();
 
-    // Chargement de l'état isTaskActive depuis SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     List<String>? artistesString = prefs.getStringList('artistes');
 
@@ -382,9 +377,8 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       }
     }
 
-    // Appliquer l'état isTaskActive aux artistes chargés depuis Firestore
     for (Artiste artiste in loadedArtistes) {
-      artiste.isTaskActive = isTaskActiveMap[artiste.nom] ?? false; // Utiliser false comme valeur par défaut
+      artiste.isTaskActive = isTaskActiveMap[artiste.nom] ?? false;
     }
 
     if (mounted) {
@@ -393,7 +387,6 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -411,9 +404,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
               Padding(
                 padding: const EdgeInsets.all(10.0),
                 child: Text(
-                  '${listeArtistes.length} ${listeArtistes.length == 1
-                      ? "alert"
-                      : "alerts"}',
+                  '${listeArtistes.length} ${listeArtistes.length == 1 ? "alert" : "alerts"}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -429,6 +420,14 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                         artiste.imageUrl!.isNotEmpty;
 
                     return GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => TaskDetails(
+                                userId: widget.uid, artiste: artiste.nom),
+                          ),
+                        );
+                      },
                       onLongPress: () =>
                           showEditDeleteDialog(context, artiste, index),
                       child: Card(
@@ -463,8 +462,10 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                             ListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 25, vertical: 10),
-                              title: Text(artiste.nom, style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold)),
+                              title: Text(artiste.nom,
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold)),
                               trailing: Switch(
                                 value: artiste.isTaskActive,
                                 onChanged: (bool value) async {
@@ -477,7 +478,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
                                   if (value) {
                                     setTaskEnabled(
                                       taskName,
-                                      true, // isScheduled
+                                      true,
                                       days: artiste.days,
                                       hours: artiste.hours,
                                       minutes: artiste.minutes,
@@ -517,20 +518,19 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
     );
   }
 
-
   Future<void> onDeletePressed(Artiste artiste, int index) async {
     cancelTask("task_${artiste.nom}");
     try {
-      // Requête pour trouver le document basé sur le nom de l'artiste
+      // Request to find the correct artist in Firestore
       var querySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.uid)
           .collection('alerts')
-          .where('artist', isEqualTo: artiste.nom) // Utilisez le champ exact utilisé pour stocker le nom de l'artiste
-          .limit(1) // S'il y a plusieurs documents avec le même nom, cela limitera à un seul résultat
+          .where('artist', isEqualTo: artiste.nom)
+          .limit(1)
           .get();
 
-      // Si le document existe, supprimez-le
+      // if the document exists, delete
       if (querySnapshot.docs.isNotEmpty) {
         await FirebaseFirestore.instance
             .collection('users')
@@ -543,16 +543,15 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       print("Erreur lors de la suppression de l'artiste: $e");
     }
 
-    // Supprimer l'image de Google Storage, si elle existe
+    // Delete the picture from google storage
     if (artiste.imageUrl != null && artiste.imageUrl!.isNotEmpty) {
       FirebaseStorage.instance.refFromURL(artiste.imageUrl!).delete();
     }
     setState(() {
       listeArtistes.removeAt(index);
     });
-    await saveArtistsToPrefs(); // Votre méthode existante pour sauvegarder dans SharedPreferences
+    await saveArtistsToPrefs();
   }
-
 
   void showEditDeleteDialog(BuildContext context, Artiste artiste, int index) {
     showDialog(
@@ -560,19 +559,19 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Do you want to edit or delete the alert for ${artiste.nom}?"),
+          title: Text(
+              "Do you want to edit or delete the alert for ${artiste.nom}?"),
           actions: <Widget>[
             TextButton(
               child: Text("Edit"),
               onPressed: () {
-                Navigator.of(context).pop(); // Fermez d'abord la boîte de dialogue
+                Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => EditAlerte(
                       uid: widget.uid,
                       alerteId: artiste.nom,
                       onAlertAdded: () {
-                        // Vous pourriez vouloir recharger les alertes après avoir édité
                         reloadAlerts();
                       },
                     ),
@@ -584,7 +583,7 @@ class _ListeArtistesWidgetState extends State<ListeArtistesWidget> {
               child: Text("Delete"),
               onPressed: () async {
                 await onDeletePressed(artiste, index);
-                Navigator.of(context).pop(); // Fermez la boîte de dialogue
+                Navigator.of(context).pop();
               },
             ),
           ],

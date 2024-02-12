@@ -1,11 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:workmanager/workmanager.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'Accueil.dart';
-import 'package:background_fetch/background_fetch.dart';
-import 'SiteChecker.dart';
 import 'TaskManager.dart' as task_manager;
 import 'login.dart';
 
@@ -21,7 +17,7 @@ void main() async {
   if (isLoggedIn && userId != null) {
     runApp(MaterialApp(
       home: Accueil(uid: userId),
-      debugShowCheckedModeBanner: false,  // Ajouté ici
+      debugShowCheckedModeBanner: false,
     ));
   } else {
     runApp(const MyApp());
@@ -34,8 +30,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: LoginPage(),  // Assurez-vous que c'est le bon écran de démarrage
-      debugShowCheckedModeBanner: false,  // Ajouté ici
+      home: LoginPage(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

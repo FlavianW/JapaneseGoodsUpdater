@@ -11,9 +11,10 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  //Controllers
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController nicknameController = TextEditingController(); // Contrôleur pour le pseudonyme
+  final TextEditingController nicknameController = TextEditingController();
 
   Future<void> register() async {
     try {
@@ -24,16 +25,14 @@ class _RegisterPageState extends State<RegisterPage> {
 
       User? user = userCredential.user;
       if (user != null) {
-        // Enregistrer les informations de l'utilisateur dans Firestore
+        // Send to firestore
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'email': user.email,
-          'nickname': nicknameController.text, // et autres informations utilisateur
+          'nickname': nicknameController.text,
         });
 
-        // Redirection ou gestion après inscription
       }
     } on FirebaseAuthException {
-      // Gestion des erreurs
     }
   }
 

@@ -65,14 +65,13 @@ class _LoginPageState extends State<LoginPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       if (stayLoggedIn && userCredential.user != null) {
         await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('userId', userCredential.user!.uid); // Stocker l'UID
+        await prefs.setString('userId', userCredential.user!.uid); // Keep UID in shared preferences
       }
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => Accueil(uid: userCredential.user!.uid)),
       );
     } on FirebaseAuthException {
-      // Gestion des erreurs
     }
   }
 

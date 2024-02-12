@@ -31,7 +31,8 @@
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            tools:ignore="MissingClass" />
 
         <!-- Don't delete the meta-data below. -->
         <meta-data
@@ -39,4 +40,18 @@
             android:value="2" />
 
     </application>
+
+    <!-- Ajoutez ceci juste avant la fermeture de la balise </manifest> -->
+    <queries>
+        <!-- Exemple pour les liens web -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <!-- Ajoutez d'autres schémas d'URL selon les besoins -->
+    </queries>
 </manifest>

@@ -28,7 +28,7 @@ class CreerAlerte extends StatefulWidget {
 class _CreerAlerteState extends State<CreerAlerte> {
 
   TextEditingController artistController = TextEditingController();
-  String? artistError; // Variable pour le message d'erreur
+  String? artistError;
 
   String artist = '';
   int days = 1,
@@ -45,17 +45,17 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
   void initState() {
     super.initState();
-    days = 1; // Assurez-vous que days est initialisé à 1 par défaut
-    hours = 0; // Initialisez à la valeur par défaut souhaitée
-    minutes = 0; // Initialisez à la valeur par défaut souhaitée
-    // Toute autre initialisation nécessaire peut être ajoutée ici
+    // default values
+    days = 1;
+    hours = 0;
+    minutes = 0;
   }
 
 
   Future<void> pickImage() async {
     final ImagePicker picker = ImagePicker();
 
-    // Sélectionner une image depuis la galerie
+    // Select an image in the gallery
     final XFile? pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
       maxWidth: 800,
@@ -64,31 +64,31 @@ class _CreerAlerteState extends State<CreerAlerte> {
     );
 
     if (pickedFile != null) {
-      // Recadrer l'image sélectionnée pour obtenir un rapport d'aspect 16:10
+      // Crop and force aspect ratio in 16:9
       File imageFile = File(pickedFile.path);
 
       CroppedFile? croppedFile = await ImageCropper().cropImage(
         sourcePath: imageFile.path,
-        aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),  // Définir le rapport d'aspect 16:10
+        aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
         uiSettings: [AndroidUiSettings(
             toolbarTitle: 'Cropper',
             toolbarColor: Colors.deepOrange,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.ratio16x9,
-            lockAspectRatio: true  // Verrouiller le rapport d'aspect
+            lockAspectRatio: true
         )],
       );
 
       if (croppedFile != null) {
         setState(() {
-          _image = File(croppedFile.path);  // Convertir CroppedFile en File
+          _image = File(croppedFile.path);
         });
       }
     }
   }
 
   bool isDurationValid(int days, int hours, int minutes) {
-    // Convertissez tout en minutes et vérifiez si le total est >= 15 minutes
+    // Check if the total amount of minutes is > 15 minutes
     int totalMinutes = days * 24 * 60 + hours * 60 + minutes;
     return totalMinutes >= 15;
   }
@@ -104,7 +104,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
             TextButton(
               child: const Text('OK'),
               onPressed: () {
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -123,9 +123,8 @@ class _CreerAlerteState extends State<CreerAlerte> {
     print(fileName);
     Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
     UploadTask uploadTask = storageRef.putFile(image);
-    // Attendre la fin de l'upload
+    // wait for the upload to end
     await uploadTask;
-    // Récupérer et retourner l'URL de l'image
     String downloadUrl = await storageRef.getDownloadURL();
     print(downloadUrl);
     return downloadUrl;
@@ -142,7 +141,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       Future<void> showArtistExistsDialog() async {
         return showDialog<void>(
           context: context,
-          barrierDismissible: false, // L'utilisateur doit appuyer sur un bouton pour fermer la boîte de dialogue
+          barrierDismissible: false,
           builder: (BuildContext dialogContext) {
             return AlertDialog(
               title: const Text('Alerte Existe Déjà'),
@@ -158,7 +157,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                 TextButton(
                   child: const Text('OK'),
                   onPressed: () {
-                    Navigator.of(dialogContext).pop(); // Ferme la boîte de dialogue
+                    Navigator.of(dialogContext).pop();
                   },
                 ),
               ],
@@ -177,12 +176,12 @@ class _CreerAlerteState extends State<CreerAlerte> {
           .get();
 
       if (existingAlerts.docs.isNotEmpty) {
-        // Affiche un popup si un artiste avec le même nom existe déjà
+        // Show a popup if Artist already exists
         await showArtistExistsDialog();
         return;
       }
 
-      // Préparez les données de l'alerte
+      // Prepare data
       final alertData = {
         'artist': artistController.text,
         'days': days,
@@ -201,7 +200,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'siteResults': {},
       };
 
-      // Collecte des résultats pour chaque site activé
       // Initialize siteResults map to store the results from each site
       Map<String, int> siteResults = {};
 
@@ -217,8 +215,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       // Wait for all the checks to complete
       await Future.wait(checkFutures);
 
-      // Mise à jour de alertData avec les résultats des sites
-      alertData['LastCheck'] = siteResults;
+      alertData['SiteFirstCheck'] = siteResults;
 
       try {
         if (_image != null) {
@@ -233,9 +230,9 @@ class _CreerAlerteState extends State<CreerAlerte> {
 
       if (artistController.text.isEmpty) {
         setState(() {
-          artistError = "Artist field cannot be empty"; // Définir le message d'erreur
+          artistError = "Artist field cannot be empty";
         });
-        return; // Ne pas continuer si le champ est vide
+        return;
       }
 
       if (!mounted) return;
@@ -253,7 +250,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
         'nom': artistController.text,
         'notifzero': sendNotifications,
         'imageUrl': alertData['imageUrl'],
-        'isTaskActive': true, // Set this to true as the task for this alert should be active
+        'isTaskActive': true,
         'days': days,
         'hours': hours,
         'minutes': minutes,
@@ -262,7 +259,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       String taskName = "task_${artistController.text}";
       await setTaskEnabled(
           "task_" + artistController.text,
-          true, // isEnabled
+          true,
           days: days,
           hours: hours,
           minutes: minutes,
@@ -275,8 +272,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
       widget.onAlertAdded();
 
 
-      Navigator.pop(context); // Retournez à l'écran précédent après l'ajout
-      // Afficher un message ou effectuer une action après l'enregistrement
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Alert added")),
       );
@@ -295,7 +291,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              Navigator.pop(context); // Revenir à l'écran précédent
+              Navigator.pop(context);
             },
           ),
         ),
@@ -324,7 +320,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                       label: "Days",
                       minValue: 0,
                       maxValue: 7,
-                      defaultValue: days, // Assurez-vous que la valeur par défaut est bien passée
+                      defaultValue: days,
                       onChanged: (val) => setState(() => days = val),
                     ),
                   ),
@@ -333,7 +329,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                       label: "Hours",
                       minValue: 0,
                       maxValue: 59,
-                      defaultValue: hours, // Assurez-vous de fournir la valeur actuelle de days comme defaultValue
+                      defaultValue: hours,
                       onChanged: (val) => setState(() => hours = val),
                     ),
                   ),
@@ -342,7 +338,7 @@ class _CreerAlerteState extends State<CreerAlerte> {
                       label: "Minutes",
                       minValue: 0,
                       maxValue: 59,
-                      defaultValue: minutes, // Assurez-vous de fournir la valeur actuelle de days comme defaultValue
+                      defaultValue: minutes,
                       onChanged: (val) => setState(() => minutes = val),
                     ),
                   ),
@@ -364,7 +360,6 @@ class _CreerAlerteState extends State<CreerAlerte> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-              // Ajout des CheckboxListTile pour chaque site
               _buildCheckboxListTile("Melonbooks", Melonbooks, (bool value) {
                 setState(() => Melonbooks = value);
               }),
@@ -440,12 +435,12 @@ class TimeCard extends StatefulWidget {
 }
 
 class _TimeCardState extends State<TimeCard> {
-  late int currentValue; // Ajoutez cette ligne ici
+  late int currentValue;
 
   @override
   void initState() {
     super.initState();
-    currentValue = widget.defaultValue; // Initialisez currentValue avec defaultValue
+    currentValue = widget.defaultValue;
   }
 
   @override
@@ -464,12 +459,12 @@ class _TimeCardState extends State<TimeCard> {
         children: [
           Text(widget.label),
           DropdownButton<int>(
-            value: currentValue, // Utilisez la valeur de currentValue ici
+            value: currentValue,
             items: menuItems,
             onChanged: (int? newValue) {
               setState(() {
-                currentValue = newValue!; // Mettez à jour currentValue
-                widget.onChanged(newValue); // Appelez widget.onChanged avec la nouvelle valeur
+                currentValue = newValue!;
+                widget.onChanged(newValue);
               });
             },
           ),

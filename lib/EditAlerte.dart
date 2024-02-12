@@ -43,7 +43,7 @@ class _EditAlerteState extends State<EditAlerte> {
   bool Mandarake = false;
   File? _image;
   String imageBase = '';
-  Widget? imageUrlWidget; // Déclaration de imageUrlWidget
+  Widget? imageUrlWidget;
 
   @override
   void initState() {
@@ -64,7 +64,6 @@ class _EditAlerteState extends State<EditAlerte> {
           .get();
 
       if (existingAlerts.docs.isNotEmpty) {
-        // Accédez aux données du premier document (car vous avez limité à 1)
         var alertData = existingAlerts.docs[0].data() as Map<String, dynamic>;
         print(alertData);
         setState(() {
@@ -82,7 +81,7 @@ class _EditAlerteState extends State<EditAlerte> {
           Mandarake = alertData['sites']['Mandarake'] ?? false;
           imageBase = alertData['imageUrl'] ?? '';
 
-          // Vérifiez si vous avez une imageUrl dans les données de l'alerte
+          // Check if there is an image
           if (alertData['imageUrl'] != '') {
             imageUrlWidget = Image.network(alertData['imageUrl']);
           }
@@ -94,7 +93,7 @@ class _EditAlerteState extends State<EditAlerte> {
   }
 
   bool isDurationValid(int days, int hours, int minutes) {
-    // Convertissez tout en minutes et vérifiez si le total est >= 5 minutes
+    // Check if the total amount of minutes is > 15 minutes
     int totalMinutes = days * 24 * 60 + hours * 60 + minutes;
     return totalMinutes >= 15;
   }
@@ -110,7 +109,7 @@ class _EditAlerteState extends State<EditAlerte> {
             TextButton(
               child: const Text('OK'),
               onPressed: () {
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -170,16 +169,16 @@ class _EditAlerteState extends State<EditAlerte> {
       }
 
       if (_image != null && imageBase != '') {
-        // Uploadez l'image et obtenez l'URL
+        // upload pic and get URL
         String imageUrl = await uploadImage(_image!);
         updateData['imageUrl'] = imageUrl;
 
-        // Supprimez l'ancienne image de Firebase Storage si elle existe
+        // delete old image from firestore
         if (imageBase.isNotEmpty) {
           await deleteImage(imageBase);
         }
       } else {
-        // Si aucune nouvelle image n'est sélectionnée, conservez l'URL de l'image existante
+        // If no new pic, stay with the current
         updateData['imageUrl'] = imageBase;
       }
 
@@ -192,7 +191,7 @@ class _EditAlerteState extends State<EditAlerte> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        var documentId = querySnapshot.docs.first.id; // Récupérez l'ID du document
+        var documentId = querySnapshot.docs.first.id; // get doc ID
 
         await firestoreInstance
             .collection('users')
@@ -208,7 +207,7 @@ class _EditAlerteState extends State<EditAlerte> {
             await cancelTask('task_'+artistBase);
             await setTaskEnabled(
                 "task_" + artistController.text,
-                true, // isEnabled
+                true,
                 days: days,
                 hours: hours,
                 minutes: minutes,
@@ -227,8 +226,8 @@ class _EditAlerteState extends State<EditAlerte> {
             List<String> updatedArtistesString = [];
             for (var str in artistesString) {
               var artiste = json.decode(str);
-              if (artiste['nom'] == artistBase) { // artistBase est l'ancien nom de l'artiste
-                artiste['nom'] = artistController.text; // Mettre à jour avec le nouveau nom
+              if (artiste['nom'] == artistBase) { // Keep old name
+                artiste['nom'] = artistController.text; // New name
                 artiste['hours'] = hours;
                 artiste['minutes'] = minutes;
                 artiste['days'] = days;
@@ -240,14 +239,13 @@ class _EditAlerteState extends State<EditAlerte> {
             await prefs.setStringList('artistes', updatedArtistesString);
           }
 
-          widget.onAlertAdded(); // Appeler le rappel après la mise à jour
+          widget.onAlertAdded();
 
-          Navigator.pop(context); // Retour à l'écran précédent
+          Navigator.pop(context);
 
 
         }).catchError((error) {
           print("Error updating alert: $error");
-          // Gérer l'erreur ici, peut-être afficher un message à l'utilisateur
         });
       }
     } catch (e) {
@@ -282,7 +280,7 @@ class _EditAlerteState extends State<EditAlerte> {
         ],
       );
 
-      if (croppedFile != null) {  // Corrected line
+      if (croppedFile != null) {
         print("Selected image path: ${croppedFile.path}");
         setState(() {
           _image = File(croppedFile.path);
